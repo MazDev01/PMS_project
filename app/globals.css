@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/* ============================================================
+   MACCA Light Engineering — PMS Design Tokens
+   (ported from the approved design system, oklch color space)
+   ============================================================ */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.557 0.241 28.59);
+
+  --primary: oklch(0.557 0.241 28.59);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.97 0.02 25);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.6 0.18 145);
+  --success-foreground: oklch(0.4 0.18 145);
+  --warning: oklch(0.65 0.16 60);
+  --warning-foreground: oklch(0.45 0.16 60);
+  --info: oklch(0.55 0.18 240);
+  --info-foreground: oklch(0.35 0.18 240);
+
+  --brand-50: #fff1f2;
+  --brand-100: #ffe4e6;
+  --brand-500: #e60023;
+  --brand-600: #b30019;
+  --brand-700: #8a0014;
+
+  --chart-1: oklch(0.557 0.241 28.59);
+  --chart-2: oklch(0.65 0.16 60);
+  --chart-3: oklch(0.55 0.18 240);
+  --chart-4: oklch(0.6 0.18 145);
+  --chart-5: oklch(0.55 0.2 290);
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow: 0 2px 8px oklch(0 0 0 / 0.08);
+  --shadow-md: 0 4px 16px oklch(0 0 0 / 0.1);
+  --shadow-lg: 0 8px 32px oklch(0 0 0 / 0.12);
+}
+
+@theme inline {
+  --font-sans: var(--font-noto-thai), system-ui, sans-serif;
+  --font-mono: ui-monospace, "Courier New", monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Border radius scale — mirrors the design system multipliers */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* thin, unobtrusive scrollbars to match the clean surface style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Chart entrance animations */
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes donut-draw {
+  from {
+    stroke-dashoffset: var(--seg-len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fade-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: bar-grow 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.animate-donut {
+  animation: donut-draw 0.9s ease-out both;
+}
+.animate-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fade-pop 0.5s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-bar,
+  .animate-donut,
+  .animate-pop {
+    animation: none;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    oklch(0.93 0 0) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* touch-friendly signature canvas */
+.signature-canvas {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ============================================================
+   Contractor mobile app theme — purple → blue gradient
+   (styled from the approved reference mockup)
+   ============================================================ */
+.ct-bg {
+  background: linear-gradient(160deg, #a23fd1 0%, #7a63e0 46%, #35aef2 100%);
+  background-attachment: fixed;
+}
+.ct-glass {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.ct-glass-strong {
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+:root {
+  --ct-purple: #6d18d6;
+  --ct-purple-hover: #5a12b4;
+  --ct-purple-soft: #f3ebfe;
+}
