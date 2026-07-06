@@ -1,0 +1,140 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Steps from "@/app/components/Steps";
+import SignaturePad from "@/app/components/SignaturePad";
+import GuestLockedActions from "@/app/components/GuestLockedActions";
+import GuestInvalidLink from "@/app/components/GuestInvalidLink";
+import { IconCheckCircle, IconImage } from "@/app/components/icons";
+import { formatDateTimeTH } from "@/app/lib/format";
+import { TODAY_ISO } from "@/app/lib/mockData";
+import { useJobs, useGeneratedLinks, useStore, useUploads } from "@/app/lib/store";
+
+// Only used when the page is opened with no ?token= at all — the "Demo Entry
+// Points" on /guest link here directly for reviewers to preview the flow.
+// A real customer link always carries a token and is resolved via
+// generatedLinks below, never this constant.
+const DEMO_JOB_ID = "J-2607-041";
+
+const PHOTO_CAPTIONS = ["ก่อนทำ", "ขณะทำ", "หลังทำ"];
+const PLACEHOLDER_PHOTOS = Array.from({ length: 6 }, (_, i) => ({ caption: PHOTO_CAPTIONS[i % PHOTO_CAPTIONS.length], url: null }));
+
+function GuestSignoffInner() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  const [jobList, setJobList] = useJobs();
+  const [links] = useGeneratedLinks();
+  const { addAuditLog, addNotification } = useStore();
+
+  let job = null;
+  if (token) {
+    const link = links.find((l) => l.token === token && l.type === "delivery" && l.status === "active");
+    job = link ? jobList.find((j) => j.id === link.jobId) : null;
+  } else {
+    job = jobList.find((j) => j.id === DEMO_JOB_ID) || jobList[0];
+  }
+  const [upload] = useUploads(job?.id);
+
+  const uploadedPhotos = [
+    ...upload.before.map((item) => ({ caption: "ก่อนทำ", url: item.url })),
+    ...upload.during.map((item) => ({ caption: "ขณะทำ", url: item.url })),
+    ...upload.after.map((item) => ({ caption: "หลังทำ", url: item.url })),
+  ];
+  const photos = uploadedPhotos.length > 0 ? uploadedPhotos : PLACEHOLDER_PHOTOS;
+
+  const [hasSig, setHasSig] = useState(false);
+  const [locked, setLocked] = useState(false);
+
+  if (!job) {
+    return <GuestInvalidLink />;
+  }
+
+  function handleSignoff() {
+    setLocked(true);
+    setJobList((prev) => prev.map((j) => (j.id === job.id ? { ...j, status: "done", closedDate: TODAY_ISO } : j)));
+    addAuditLog({ actor: `ลูกค้า - ${job.customer}`, role: "guest", action: "เซ็นอนุมัติรับมอบงาน", target: job.id });
+    addNotification({ audience: "coordinator", title: "ลูกค้าเซ็นอนุมัติส่งมอบงาน", detail: `${job.id} — ${job.customer}` });
+  }
+
+  return (
+    <div>
+      <Steps steps={["ใบเสนอราคา", "คอนเฟิร์มวัน", "ใบส่งมอบงาน"]} currentIndex={2} />
+
+      {locked ? (
+        <div className="locked-wrap">
+          <div className="ds-card locked-card">
+            <div className="locked-icon"><IconCheckCircle size={32} /></div>
+            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+              ขอบคุณที่ใช้บริการ
+            </h2>
+            <p className="text-sm text-muted" style={{ marginBottom: "1rem" }}>
+              เอกสารส่งมอบงานได้รับการยืนยันเรียบร้อยแล้ว ระบบเริ่มนับระยะเวลารับประกันให้ทันที
+            </p>
+            <p className="text-xs text-muted font-mono">
+              บันทึกเมื่อ {formatDateTimeTH(`${TODAY_ISO}T14:35:00`)} จาก IP: 203.150.42.18 (บันทึกอัตโนมัติเพื่อความปลอดภัย)
+            </p>
+            <GuestLockedActions />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="doc-preview">
+            <div className="doc-preview-head">
+              <h4>ใบส่งมอบงาน</h4>
+              <span className="doc-no">DN-{job.id.replace("J-", "")}</span>
+            </div>
+            <div className="doc-row"><span className="lbl">เลขที่งาน</span><span>{job.id}</span></div>
+            <div className="doc-row"><span className="lbl">ลูกค้า</span><span>{job.customer}</span></div>
+            <div className="doc-row">
+              <span className="lbl">รายการงานที่ดำเนินการ</span>
+              <span style={{ textAlign: "right", maxWidth: 300 }}>
+                {job.jobType} — ติดตั้งเครื่องปรับอากาศและเดินท่อน้ำยาครบตามแบบ
+              </span>
+            </div>
+          </div>
+
+          <div className="section-block">
+            <h3>รูปภาพการปฏิบัติงานของทีมรับเหมา</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: "0.5rem" }}>
+              {photos.map((p, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem" }}>
+                  <div className="thumb" style={{ width: 90, height: 90 }}>
+                    {p.url ? (
+                      <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <IconImage size={22} />
+                    )}
+                  </div>
+                  <span className="text-xs text-muted">{p.caption}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="section-block">
+            <h3>เซ็นรับมอบงาน</h3>
+            <SignaturePad onChange={setHasSig} />
+            <button
+              type="button"
+              className="btn btn-md btn-default"
+              style={{ marginTop: "1rem" }}
+              disabled={!hasSig}
+              onClick={handleSignoff}
+            >
+              ยืนยันการเซ็นรับมอบงาน
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function GuestSignoffPage() {
+  return (
+    <Suspense fallback={null}>
+      <GuestSignoffInner />
+    </Suspense>
+  );
+}
