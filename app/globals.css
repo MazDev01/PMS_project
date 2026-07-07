@@ -610,12 +610,14 @@ tr:hover td { background: oklch(0.52 0.19 255 / 0.045); }
    then a large value, then a two-tier label — modeled after a reference
    dashboard the user asked to match (icon-top-left/delta-top-right/value/
    label ordering), kept in MACCA's own blue/gradient palette. */
-.stat-card { padding: 1.1rem 1.15rem; }
+.stat-card { padding: 1.1rem 1.15rem; display: flex; flex-direction: column; overflow: hidden; }
 .stat-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; margin-bottom: 0.65rem; }
 .stat-card-value { font-size: 1.3rem; font-weight: 800; line-height: 1.15; margin-bottom: 0.25rem; letter-spacing: -0.02em; }
 .stat-card-label { font-size: 0.76rem; font-weight: 600; color: var(--foreground); }
 .stat-card-sublabel { font-size: 0.68rem; color: var(--muted-foreground); margin-top: 0.12rem; }
-.stat-card-trend { margin-top: 0.5rem; }
+/* Sparkline sits flush to the card's bottom & side edges, pushed to the bottom
+   of the flex column so it aligns across every card in the KPI row. */
+.stat-card-trend { margin: 0.7rem -1.15rem -1.1rem; margin-top: auto; padding-top: 0.7rem; }
 .stat-card-icon {
   width: 44px; height: 44px; background: var(--gradient-brand); border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -1136,6 +1138,24 @@ thead { background: rgba(255, 255, 255, 0.34); }
 .chart-donut-seg { animation: chart-donut-draw 0.9s ease-out both; }
 .chart-center { transform-box: fill-box; transform-origin: center; animation: chart-pop 0.5s ease-out 0.4s both; }
 
+/* Scroll-reveal: charts wrapped in <Reveal> hold their pre-animation state
+   until the wrapper scrolls into view (.in-view), then play once. Charts NOT
+   wrapped keep animating on mount (base rules above). Higher specificity +
+   later source order let these win inside a .reveal wrapper. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal:not(.in-view) .chart-bar { animation: none; transform: scaleY(0); }
+  .reveal:not(.in-view) .chart-line { animation: none; stroke-dashoffset: 1; }
+  .reveal:not(.in-view) .chart-area { animation: none; opacity: 0; }
+  .reveal:not(.in-view) .chart-donut-seg { animation: none; stroke-dashoffset: var(--seg-len); }
+  .reveal:not(.in-view) .chart-center { animation: none; opacity: 0; }
+
+  .reveal.in-view .chart-bar { animation: chart-bar-grow 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) both; }
+  .reveal.in-view .chart-line { animation: chart-line-draw 1.15s ease-out both; }
+  .reveal.in-view .chart-area { animation: chart-fade-in 0.9s ease-out 0.25s both; }
+  .reveal.in-view .chart-donut-seg { animation: chart-donut-draw 0.9s ease-out both; }
+  .reveal.in-view .chart-center { animation: chart-pop 0.5s ease-out 0.4s both; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chart-bar, .chart-line, .chart-area, .chart-donut-seg, .chart-center { animation: none; }
 }
@@ -1319,3 +1339,179 @@ thead { background: rgba(255, 255, 255, 0.34); }
   text-decoration: none;
 }
 .aq-more:hover { text-decoration: underline; }
+
+/* Bar chart hover tooltip */
+.bar-hit { cursor: default; }
+.bar-hit .chart-bar { transition: filter 0.14s ease; }
+.bar-hit:hover .chart-bar { filter: brightness(1.1) saturate(1.1); }
+.bar-tip { opacity: 0; transition: opacity 0.14s ease; pointer-events: none; }
+.bar-hit:hover .bar-tip { opacity: 1; }
+.bar-tip-bg {
+  fill: var(--foreground);
+  filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28));
+}
+.bar-tip-text { fill: var(--card); }
+
+/* Repair backlog by team ? card grid (replaces the flat equal-length bars) */
+.repairteam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+.repairteam-card {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.repairteam-card.urgent {
+  border-left-color: var(--destructive);
+  background: rgba(220, 38, 38, 0.05);
+}
+.repairteam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.repairteam-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.repairteam-urgent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #b91c1c;
+  flex-shrink: 0;
+}
+.repairteam-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.repairteam-count {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--foreground);
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.repairteam-count em {
+  font-size: 0.64rem;
+  font-weight: 500;
+  font-style: normal;
+  color: var(--muted-foreground);
+}
+.repairteam-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+/* ?? Contractor phone device mockup (scoped so guest pages are untouched) ?? */
+.phone-page.device-sim {
+  /* Same light blue/glass tone as the coordinator app background (not dark). */
+  background:
+    radial-gradient(circle at 6% 4%, oklch(0.52 0.19 255 / 0.08), transparent 34%),
+    radial-gradient(circle at 96% 12%, oklch(0.55 0.2 290 / 0.06), transparent 34%),
+    radial-gradient(circle at 90% 92%, oklch(0.65 0.16 60 / 0.06), transparent 30%),
+    var(--background);
+  padding: 2rem 1rem;
+}
+.phone-page.device-sim .phone-frame {
+  max-width: 384px;
+  height: min(830px, 94vh);
+  border: 14px solid #0d1016;
+  border-radius: 52px;
+  box-shadow:
+    0 0 0 3px rgba(120, 130, 150, 0.35),
+    0 34px 70px -18px rgba(15, 23, 42, 0.55),
+    0 10px 24px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  position: relative;
+}
+/* Dynamic-island style notch */
+.phone-page.device-sim .phone-notch {
+  top: 11px;
+  width: 118px;
+  height: 30px;
+  background: #0d1016;
+  border-radius: 16px;
+}
+/* Home indicator bar */
+.phone-page.device-sim .phone-frame::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 9px;
+  transform: translateX(-50%);
+  width: 122px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.32);
+  z-index: 20;
+  pointer-events: none;
+}
+/* Clear the notch at top and the home indicator at bottom */
+.phone-page.device-sim .phone-topbar { padding-top: 2.6rem; }
+.phone-page.device-sim .phone-bottom-nav { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+
+/* Upload stage ? removable photo thumbnails + per-stage counter */
+.upload-count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin-left: 0.35rem;
+}
+.upload-thumb { position: relative; }
+.thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.96);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: filter 0.14s ease, transform 0.14s ease;
+}
+.thumb-remove:hover { filter: brightness(1.12); transform: scale(1.08); }
+
+/* Contractor "?????????" ? prominent appointment time on each job card */
+.job-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+.job-time-hh {
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}

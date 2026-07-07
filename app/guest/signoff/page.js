@@ -17,8 +17,23 @@ import { useJobs, useGeneratedLinks, useStore, useUploads } from "@/app/lib/stor
 // generatedLinks below, never this constant.
 const DEMO_JOB_ID = "J-2607-041";
 
-const PHOTO_CAPTIONS = ["ก่อนทำ", "ขณะทำ", "หลังทำ"];
-const PLACEHOLDER_PHOTOS = Array.from({ length: 6 }, (_, i) => ({ caption: PHOTO_CAPTIONS[i % PHOTO_CAPTIONS.length], url: null }));
+// Real before/during/after field photos per job category (files in
+// /public/work-photos). Shown when a job has no uploaded evidence yet, so the
+// customer sign-off sheet reads like an actual delivery document. The trio is
+// chosen to match the job's type — A/C installation is the default.
+const WORK_PHOTO_SETS = {
+  ac: { before: "/work-photos/ac-before.jpg", during: "/work-photos/ac-during.jpg", after: "/work-photos/ac-after.jpg" },
+  elec: { before: "/work-photos/elec-before.jpg", during: "/work-photos/elec-during.jpg", after: "/work-photos/elec-after.jpg" },
+  plumb: { before: "/work-photos/plumb-before.jpg", during: "/work-photos/plumb-during.jpg", after: "/work-photos/plumb-after.jpg" },
+  fire: { before: "/work-photos/fire-before.jpg", during: "/work-photos/fire-during.jpg", after: "/work-photos/fire-after.jpg" },
+};
+
+function photoSetForJob(jobType = "") {
+  if (jobType.includes("อัคคีภัย") || jobType.includes("ดับเพลิง")) return WORK_PHOTO_SETS.fire;
+  if (jobType.includes("สุขาภิบาล") || jobType.includes("ประปา")) return WORK_PHOTO_SETS.plumb;
+  if (jobType.includes("ไฟฟ้า") || jobType.includes("สื่อสาร")) return WORK_PHOTO_SETS.elec;
+  return WORK_PHOTO_SETS.ac; // ปรับอากาศ / HVAC / ค่าเริ่มต้น
+}
 
 function GuestSignoffInner() {
   const searchParams = useSearchParams();
@@ -41,7 +56,13 @@ function GuestSignoffInner() {
     ...upload.during.map((item) => ({ caption: "ขณะทำ", url: item.url })),
     ...upload.after.map((item) => ({ caption: "หลังทำ", url: item.url })),
   ];
-  const photos = uploadedPhotos.length > 0 ? uploadedPhotos : PLACEHOLDER_PHOTOS;
+  const set = photoSetForJob(job?.jobType);
+  const samplePhotos = [
+    { caption: "ก่อนทำ", url: set.before },
+    { caption: "ขณะทำ", url: set.during },
+    { caption: "หลังทำ", url: set.after },
+  ];
+  const photos = uploadedPhotos.length > 0 ? uploadedPhotos : samplePhotos;
 
   const [hasSig, setHasSig] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -96,17 +117,17 @@ function GuestSignoffInner() {
 
           <div className="section-block">
             <h3>รูปภาพการปฏิบัติงานของทีมรับเหมา</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: "0.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "0.7rem" }}>
               {photos.map((p, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem" }}>
-                  <div className="thumb" style={{ width: 90, height: 90 }}>
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  <div className="thumb" style={{ width: "100%", aspectRatio: "4 / 3", height: "auto" }}>
                     {p.url ? (
-                      <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={p.url} alt={p.caption} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <IconImage size={22} />
                     )}
                   </div>
-                  <span className="text-xs text-muted">{p.caption}</span>
+                  <span className="text-xs text-muted" style={{ textAlign: "center", fontWeight: 500 }}>{p.caption}</span>
                 </div>
               ))}
             </div>

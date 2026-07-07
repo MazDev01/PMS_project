@@ -1,4 +1,4 @@
-import { Sparkline } from "./charts";
+import { CardSparkline } from "./charts";
 import { IconArrowRight } from "./icons";
 
 // deltaTrend controls the little up/down arrow — only pass it when deltaText
@@ -6,7 +6,7 @@ import { IconArrowRight } from "./icons";
 // "ทุกสถานะ" or "ควรตรวจสอบ", which just take a color via deltaTone.
 const ARROW_ROTATION = { up: -45, down: 45 };
 
-export default function StatCard({ label, subLabel, value, icon, deltaText, deltaTone = "success", deltaTrend, trend, trendColor = "var(--primary)" }) {
+export default function StatCard({ label, subLabel, value, icon, deltaText, deltaTone = "success", deltaTrend, trend, trendColor = "var(--primary)", trendId }) {
   return (
     <div className="ds-card stat-card">
       <div className="stat-card-top">
@@ -24,7 +24,7 @@ export default function StatCard({ label, subLabel, value, icon, deltaText, delt
       <div className="stat-card-label">{label}</div>
       {subLabel && <div className="stat-card-sublabel">{subLabel}</div>}
       {trend && trend.length > 1 && (
-        <div className="stat-card-trend"><Sparkline data={trend} width={60} height={24} color={trendColor} /></div>
+        <div className="stat-card-trend"><CardSparkline data={trend} height={46} color={trendColor} id={trendId || label} /></div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconBell, IconUser } from "./icons";
+import { IconBell } from "./icons";
 import { useAuth } from "@/app/lib/auth";
 import { useNotifications } from "@/app/lib/store";
 
@@ -13,7 +13,7 @@ export default function ContractorShell({ tabs, children }) {
   const unreadCount = notifications.filter((n) => (n.audience === "all" || n.audience === "contractor") && n.unread).length;
 
   return (
-    <div className="phone-page">
+    <div className="phone-page device-sim">
       <div className="phone-frame">
         <div className="phone-notch" />
         <div className="phone-topbar">
@@ -25,9 +25,6 @@ export default function ContractorShell({ tabs, children }) {
             <Link href="/contractor/notifications" className="app-icon-btn" aria-label="การแจ้งเตือน" title="การแจ้งเตือน" style={{ position: "relative" }}>
               <IconBell size={15} />
               {unreadCount > 0 && <span className="dot" />}
-            </Link>
-            <Link href="/contractor/dashboard" className="app-icon-btn" aria-label="โปรไฟล์" title="โปรไฟล์">
-              <IconUser size={15} />
             </Link>
           </div>
         </div>

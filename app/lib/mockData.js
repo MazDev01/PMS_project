@@ -226,7 +226,11 @@ function generateJobs(count, startNum) {
     const scheduledOffset = createdOffset + 6 + (i % 12);
     const createdDate = addDaysISO(TODAY_ISO, createdOffset);
     const scheduledDate = addDaysISO(TODAY_ISO, scheduledOffset);
-    const amount = 90000 + ((i * 53) % 24) * 42000;
+    // Job value grows with recency so monthly revenue (sum of closed-job amounts)
+    // trends UPWARD over time — the more recent the job, the larger its value,
+    // plus a little per-job texture so months aren't perfectly flat.
+    const recencyDays = 180 + createdOffset; // ~1 (oldest) .. ~165 (most recent)
+    const amount = 80000 + Math.round(recencyDays / 30) * 60000 + ((i * 17) % 5) * 15000;
     out.push({
       id: `J-2607-${startNum + i}`,
       customerId: customer.id,

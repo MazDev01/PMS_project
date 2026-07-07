@@ -1,6 +1,9 @@
+"use client";
+
 // Lightweight, dependency-free SVG charts — hand-rolled in the same
 // visual language as the Recharts examples in design-system.html,
 // but parametrized with real props instead of being static demo art.
+import { useState } from "react";
 
 export function Sparkline({ data = [], color = "var(--primary)", width = 80, height = 36 }) {
   if (!data.length) return null;
@@ -21,7 +24,38 @@ export function Sparkline({ data = [], color = "var(--primary)", width = 80, hei
   );
 }
 
-export function SimpleBarChart({ data = [], color = "var(--primary)", width = 320, height = 170, valueFormatter }) {
+// Full-width area sparkline that sits flush along the bottom edge of a KPI
+// card (like the reference dashboards). No axes/labels — pure trend shape.
+export function CardSparkline({ data = [], color = "var(--primary)", height = 46, id = "spark" }) {
+  if (data.length < 2) return null;
+  const width = 240; // viewBox width; the svg stretches to the card via width=100%
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const stepX = width / (data.length - 1);
+  const pts = data.map((v, i) => ({
+    x: i * stepX,
+    y: height - 5 - ((v - min) / range) * (height - 12),
+  }));
+  const line = smoothPath(pts);
+  const area = `${line} L${pts[pts.length - 1].x.toFixed(1)},${height} L${pts[0].x.toFixed(1)},${height} Z`;
+  const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, "") || "spark";
+  const gradId = `cardspark-${safeId}`;
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.24" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradId})`} className="chart-area" />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" pathLength="1" className="chart-line" />
+    </svg>
+  );
+}
+
+export function SimpleBarChart({ data = [], color = "var(--primary)", width = 320, height = 170, valueFormatter, unit }) {
   if (!data.length) return null;
   const max = Math.max(...data.map((d) => d.value), 1);
   const padLeft = 34;
@@ -32,6 +66,7 @@ export function SimpleBarChart({ data = [], color = "var(--primary)", width = 32
   const barGap = 10;
   const barW = Math.max(10, chartW / data.length - barGap);
   const gridLines = [0.25, 0.5, 0.75, 1];
+  const unitSuffix = unit ? ` ${unit}` : "";
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%">
@@ -50,12 +85,25 @@ export function SimpleBarChart({ data = [], color = "var(--primary)", width = 32
         const barH = (d.value / max) * chartH;
         const x = padLeft + i * (barW + barGap) + barGap / 2;
         const y = padTop + chartH - barH;
+        const cx = x + barW / 2;
+        // Hover tooltip: value (+ optional unit), floating above the bar. If the
+        // bar is tall enough that the tip would clip the top, drop it just inside.
+        const valText = `${valueFormatter ? valueFormatter(d.value) : d.value}${unitSuffix}`;
+        const tipW = Math.max(26, valText.length * 6.4 + 14);
+        const tipH = 20;
+        const tipY = y - tipH - 8 < 0 ? y + 6 : y - tipH - 8;
         return (
-          <g key={d.label + i}>
+          <g key={d.label + i} className="bar-hit">
+            {/* invisible full-column hover target so the whole column reacts */}
+            <rect x={x - barGap / 2} y={padTop} width={barW + barGap} height={chartH} fill="transparent" />
             <rect x={x} y={y} width={barW} height={Math.max(barH, 1)} rx="4" fill={d.color || color} className="chart-bar" style={{ animationDelay: `${i * 0.06}s` }} />
-            <text x={x + barW / 2} y={height - 6} textAnchor="middle" fontSize="9" fill="var(--muted-foreground)">
+            <text x={cx} y={height - 6} textAnchor="middle" fontSize="9" fill="var(--muted-foreground)">
               {d.label}
             </text>
+            <g className="bar-tip" transform={`translate(${cx}, ${tipY})`}>
+              <rect x={-tipW / 2} y={0} width={tipW} height={tipH} rx="6" className="bar-tip-bg" />
+              <text x={0} y={tipH / 2 + 3.4} textAnchor="middle" fontSize="10.5" fontWeight="700" className="bar-tip-text">{valText}</text>
+            </g>
           </g>
         );
       })}
@@ -64,20 +112,27 @@ export function SimpleBarChart({ data = [], color = "var(--primary)", width = 32
 }
 
 export function DonutChart({ segments = [], size = 150, thickness = 26, centerLabel, centerSub }) {
+  // Hovering a slice (on the ring OR in the legend) pops it out, dims the rest,
+  // and shows that slice's own share (%) in the middle.
+  const [active, setActive] = useState(null);
   const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
   const r = (size - thickness) / 2;
   const circumference = 2 * Math.PI * r;
   let angleAcc = 0;
   const cx = size / 2;
   const cy = size / 2;
+  const activeSeg = active != null ? segments[active] : null;
+  const activePct = activeSeg ? Math.round((activeSeg.value / total) * 100) : null;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} style={{ flexShrink: 0 }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} style={{ flexShrink: 0, overflow: "visible" }}>
         {segments.map((seg, i) => {
           const len = (seg.value / total) * circumference;
           const startAngle = (angleAcc / total) * 360;
           angleAcc += seg.value;
+          const isActive = active === i;
+          const dim = active != null && !isActive;
           return (
             <circle
               key={i}
@@ -86,32 +141,64 @@ export function DonutChart({ segments = [], size = 150, thickness = 26, centerLa
               r={r}
               fill="none"
               stroke={seg.color}
-              strokeWidth={thickness}
+              strokeWidth={isActive ? thickness + 7 : thickness}
               strokeDasharray={`${len} ${circumference}`}
               transform={`rotate(${-90 + startAngle} ${cx} ${cy})`}
               className="chart-donut-seg"
-              style={{ "--seg-len": len, animationDelay: `${i * 0.12}s` }}
+              style={{
+                "--seg-len": len,
+                animationDelay: `${i * 0.12}s`,
+                opacity: dim ? 0.35 : 1,
+                cursor: "pointer",
+                transition: "stroke-width 0.16s ease, opacity 0.16s ease",
+              }}
+              onMouseEnter={() => setActive(i)}
+              onMouseLeave={() => setActive(null)}
             />
           );
         })}
-        {(centerLabel || centerSub) && (
+        {(centerLabel || centerSub || activeSeg) && (
           <g className="chart-center">
-            {centerLabel && (
-              <text x={cx} y={cy - 3} textAnchor="middle" fontSize="19" fontWeight="700" fill="var(--foreground)">
-                {centerLabel}
-              </text>
-            )}
-            {centerSub && (
-              <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9.5" fill="var(--muted-foreground)">
-                {centerSub}
-              </text>
+            {activeSeg ? (
+              <>
+                <text x={cx} y={cy - 2} textAnchor="middle" fontSize="21" fontWeight="800" fill="var(--foreground)">
+                  {activePct}%
+                </text>
+                <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9" fill="var(--muted-foreground)">
+                  {activeSeg.label}
+                </text>
+              </>
+            ) : (
+              <>
+                {centerLabel && (
+                  <text x={cx} y={cy - 3} textAnchor="middle" fontSize="19" fontWeight="700" fill="var(--foreground)">
+                    {centerLabel}
+                  </text>
+                )}
+                {centerSub && (
+                  <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9.5" fill="var(--muted-foreground)">
+                    {centerSub}
+                  </text>
+                )}
+              </>
             )}
           </g>
         )}
       </svg>
       <div className="chart-legend" style={{ flexDirection: "column", gap: "0.5rem" }}>
         {segments.map((seg, i) => (
-          <div className="lg-item" key={i}>
+          <div
+            className="lg-item"
+            key={i}
+            onMouseEnter={() => setActive(i)}
+            onMouseLeave={() => setActive(null)}
+            style={{
+              cursor: "pointer",
+              opacity: active != null && active !== i ? 0.45 : 1,
+              fontWeight: active === i ? 700 : undefined,
+              transition: "opacity 0.16s ease",
+            }}
+          >
             <span className="sw" style={{ background: seg.color }} />
             <span>
               {seg.label} · {Math.round((seg.value / total) * 100)}%
@@ -156,6 +243,7 @@ function niceCeil(v) {
 // completed over time. `series` is [{key, label, color}]; each data row holds a
 // numeric value under every series key plus a `label` for the x-axis.
 export function DualLineChart({ data = [], series = [], width = 640, height = 190, id = "dual", maxLabels }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
   if (!data.length || !series.length) return null;
   const showLabel = (i) => {
     if (!maxLabels || maxLabels >= data.length) return true;
@@ -174,10 +262,11 @@ export function DualLineChart({ data = [], series = [], width = 640, height = 19
   const bottom = padTop + chartH;
   const xAt = (i) => padLeft + i * stepX;
   const yAt = (v) => padTop + chartH - (v / max) * chartH;
+  const hi = hoverIdx != null && hoverIdx >= 0 && hoverIdx < data.length ? hoverIdx : null;
 
   return (
     <div>
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%">
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" onMouseLeave={() => setHoverIdx(null)}>
         {/* Horizontal gridlines + integer y-axis labels */}
         {[0, 0.25, 0.5, 0.75, 1].map((g) => (
           <g key={`h${g}`}>
@@ -208,6 +297,47 @@ export function DualLineChart({ data = [], series = [], width = 640, height = 19
             {d.label}
           </text>
         ) : null))}
+        {/* Hover: vertical guide, active dots on every series, and a value box */}
+        {hi != null && (() => {
+          const gx = xAt(hi);
+          const rows = series.map((s) => ({ label: s.label, color: s.color, value: data[hi][s.key] || 0 }));
+          const headerH = 19;
+          const rowH = 15;
+          const tipH = headerH + rows.length * rowH + 7;
+          const measure = (str, dot) => str.length * 5.8 + (dot ? 15 : 0) + 18;
+          const tipW = Math.max(measure(String(data[hi].label), false), ...rows.map((r) => measure(`${r.label}  ${r.value}`, true)));
+          let tx = gx + 12;
+          if (tx + tipW > width) tx = gx - 12 - tipW;
+          if (tx < 2) tx = 2;
+          const ty = padTop + 2;
+          return (
+            <g style={{ pointerEvents: "none" }}>
+              <line x1={gx} y1={padTop} x2={gx} y2={bottom} stroke="var(--muted-foreground)" strokeDasharray="3 3" opacity="0.55" />
+              {rows.map((r, ri) => (
+                <circle key={ri} cx={gx} cy={yAt(r.value)} r="4" fill="var(--card)" stroke={r.color} strokeWidth="2.4" />
+              ))}
+              <g transform={`translate(${tx}, ${ty})`}>
+                <rect x={0} y={0} width={tipW} height={tipH} rx="7" className="bar-tip-bg" />
+                <text x={10} y={14} fontSize="10.5" fontWeight="700" fill="var(--card)">{data[hi].label}</text>
+                {rows.map((r, ri) => (
+                  <g key={ri} transform={`translate(10, ${headerH + ri * rowH + 8})`}>
+                    <circle cx={3} cy={-3} r="3.2" fill={r.color} />
+                    <text x={13} y={0} fontSize="10" fill="var(--card)">{r.label} · {r.value}</text>
+                  </g>
+                ))}
+              </g>
+            </g>
+          );
+        })()}
+        {/* Invisible per-index hover targets covering the full plot height */}
+        {data.map((d, i) => {
+          const cx = xAt(i);
+          const left = i === 0 ? padLeft : cx - stepX / 2;
+          const right = i === data.length - 1 ? padLeft + chartW : cx + stepX / 2;
+          return (
+            <rect key={`hit${i}`} x={left} y={padTop} width={Math.max(1, right - left)} height={chartH} fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
+          );
+        })}
       </svg>
       <div className="chart-legend" style={{ justifyContent: "center", gap: "1.25rem", marginTop: "0.4rem" }}>
         {series.map((s) => (

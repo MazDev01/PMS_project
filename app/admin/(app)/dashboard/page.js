@@ -170,8 +170,10 @@ export default function AdminDashboardPage() {
   // one click away on the full contractor overview.
   const teamPerformanceTop = [...teamPerformance].sort((a, b) => a.pct - b.pct).slice(0, 6);
 
-  // Revenue trend — computed from real completed jobs (by close month) within
-  // the selected date range, so the chart follows the page filter.
+  // Revenue trend — computed straight from real completed jobs (by close month)
+  // within the selected date range, so the chart reflects actual revenue and
+  // follows the page filter. No presentation shaping — the line is whatever the
+  // data says, ups and downs included.
   const revByMonth = {};
   jobs
     .filter((j) => j.status === "done" && j.closedDate && inRange(j.closedDate))

@@ -33,17 +33,18 @@ export default function AdminTeamRepairsPage() {
   const highOpenCount = tickets.filter((t) => t.priority === "high" && t.status !== "closed").length;
   const closedPct = tickets.length ? Math.round((closedCount / tickets.length) * 100) : 0;
 
-  // ── Per-team open backlog (open + in_progress) ────────────────
+  // ── Per-team open backlog (open + in_progress), broken down ───
   const teamSummary = teams
-    .map((tm) => ({
-      name: tm.name,
-      total: tickets.filter((t) => t.team === tm.name).length,
-      openCount: tickets.filter((t) => t.team === tm.name && t.status !== "closed").length,
-    }))
-    .filter((s) => s.total > 0)
-    .sort((a, b) => b.openCount - a.openCount);
-  const maxOpen = Math.max(1, ...teamSummary.map((s) => s.openCount));
-  const hasBacklog = teamSummary.some((s) => s.openCount > 0);
+    .map((tm) => {
+      const teamTix = tickets.filter((t) => t.team === tm.name);
+      const open = teamTix.filter((t) => t.status === "open").length;
+      const inProgress = teamTix.filter((t) => t.status === "in_progress").length;
+      const high = teamTix.filter((t) => t.priority === "high" && t.status !== "closed").length;
+      return { name: tm.name, total: teamTix.length, openCount: open + inProgress, open, inProgress, high };
+    })
+    .filter((s) => s.openCount > 0)
+    .sort((a, b) => b.high - a.high || b.openCount - a.openCount);
+  const hasBacklog = teamSummary.length > 0;
 
   // ── Table: apply team + status filters BEFORE useTableRows ────
   const filteredTickets = tickets.filter(
@@ -147,26 +148,24 @@ export default function AdminTeamRepairsPage() {
           </div>
           <div className="ds-card-content">
             {hasBacklog ? (
-              <div className="teamperf-list">
-                {teamSummary
-                  .filter((s) => s.openCount > 0)
-                  .map((s, idx) => (
-                    <div key={s.name} className="teamperf-row">
-                      <div className="progress-label">
-                        <span className="text-sm">{s.name}</span>
-                        <span className="text-sm" style={{ fontWeight: 700 }}>{s.openCount} เคส</span>
-                      </div>
-                      <div className="progress-track">
-                        <div
-                          className="progress-bar"
-                          style={{
-                            width: `${(s.openCount / maxOpen) * 100}%`,
-                            background: idx === 0 ? "var(--destructive)" : "var(--primary)",
-                          }}
-                        />
-                      </div>
+              <div className="repairteam-grid">
+                {teamSummary.map((s) => (
+                  <div key={s.name} className={`repairteam-card${s.high > 0 ? " urgent" : ""}`}>
+                    <div className="repairteam-head">
+                      <span className="repairteam-name" title={s.name}>{s.name}</span>
+                      {s.high > 0 && (
+                        <span className="repairteam-urgent-tag"><IconAlertTriangle size={11} /> ด่วน {s.high}</span>
+                      )}
                     </div>
-                  ))}
+                    <div className="repairteam-body">
+                      <span className="repairteam-count">{s.openCount}<em>เคสค้าง</em></span>
+                      <span className="repairteam-tags">
+                        {s.open > 0 && <span className="badge badge-destructive">เปิด {s.open}</span>}
+                        {s.inProgress > 0 && <span className="badge badge-warning">กำลังทำ {s.inProgress}</span>}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-sm text-muted">ไม่มีเคสค้าง</div>

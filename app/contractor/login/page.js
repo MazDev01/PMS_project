@@ -7,7 +7,7 @@ export default function ContractorLoginPage() {
     <LoginForm
       title="เข้าสู่ระบบ Contractor"
       subtitle="สำหรับผู้รับเหมา / ทีม Service (Mobile-First)"
-      dashboardHref="/contractor/dashboard"
+      dashboardHref="/contractor/jobs"
       role="contractor"
       mobile
     />

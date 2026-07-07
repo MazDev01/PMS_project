@@ -53,11 +53,12 @@ export default function CoordinatorPerformancePage() {
   const totalFollowUps = rows.reduce((s, r) => s + r.avgFollowUps * (r.totalJobs || 0), 0);
   const maxBacklog = Math.max(1, ...rows.map((r) => r.controllable + r.uncontrollable));
 
-  // % ค้างเกินกำหนด comparison — compact horizontal bars, worst first so the
-  // person to look at is at the top. The single worst performer pops red.
-  const worstOverdue = Math.max(0, ...overduePcts);
-  const overdueRanked = [...rows].sort((a, b) => b.overduePct - a.overduePct);
-  const overdueScale = Math.max(1, worstOverdue);
+  // Overdue-jobs comparison — by COUNT (not %), worst first. Red only kicks in
+  // when someone is carrying a lot of overdue work (HIGH_OVERDUE+ jobs).
+  const HIGH_OVERDUE = 5;
+  const MID_OVERDUE = 3;
+  const maxOverdueCount = Math.max(1, ...rows.map((r) => r.overdueCount));
+  const overdueRankedByCount = [...rows].sort((a, b) => b.overdueCount - a.overdueCount);
 
   // Success ranking — best closers first so the leader board reads top-down.
   const successRanked = [...rows].sort((a, b) => b.successRate - a.successRate);
@@ -94,32 +95,30 @@ export default function CoordinatorPerformancePage() {
         <StatCard label="ลูกค้าต้อง Follow-up เอง" value={Math.round(totalFollowUps)} icon={<IconUsers size={19} />} subLabel="รวมทุกคน ทุกงาน" />
       </div>
 
-      {/* Comparison — % ค้างเกินกำหนด ต่อคน (compact horizontal bars) */}
+      {/* Comparison — จำนวนงานค้างเกินกำหนด ต่อคน (นับเป็นงาน, แดงเมื่อค้างเยอะ) */}
       <div className="ds-card section-block">
         <div className="ds-card-header">
-          <div className="ds-card-title">% ค้างเกินกำหนด ต่อผู้ประสานงาน</div>
+          <div className="ds-card-title">งานค้างเกินกำหนด ต่อผู้ประสานงาน</div>
           <div className="ds-card-desc">
-            เรียงจากค้างมากไปน้อย — แท่งสีแดงคือผู้ที่ค้างสูงสุด ควรเข้าไปดูก่อน · ค่าเฉลี่ยทีม {Math.round(avgOverduePct)}%
+            จำนวนงานที่เลยกำหนดของแต่ละคน · เรียงจากมากไปน้อย · <span style={{ color: "var(--destructive)", fontWeight: 600 }}>แดง = ค้างเยอะ ({HIGH_OVERDUE}+ งาน)</span> · รวมทั้งทีม {totalOverdue} งาน
           </div>
         </div>
         <div className="ds-card-content">
           <div className="teamperf-list">
-            {overdueRanked.map((r) => {
-              const isWorst = r.overduePct === worstOverdue && worstOverdue > 0;
+            {overdueRankedByCount.map((r) => {
+              const n = r.overdueCount;
+              const barTone = n >= HIGH_OVERDUE ? "danger" : n >= MID_OVERDUE ? "secondary" : "";
               return (
                 <div className="teamperf-row" key={r.id}>
                   <div className="progress-label">
                     <span>{shortName(r.name)}</span>
-                    <span style={{ fontWeight: 700, color: isWorst ? "var(--destructive)" : "var(--foreground)" }}>{r.overduePct}%</span>
+                    <span style={{ fontWeight: 700, color: n >= HIGH_OVERDUE ? "var(--destructive)" : "var(--foreground)" }}>
+                      {n} งาน
+                      <span className="text-xs text-muted" style={{ fontWeight: 400, marginLeft: "0.35rem" }}>จาก {r.activeCount} active</span>
+                    </span>
                   </div>
                   <div className="progress-track">
-                    <div
-                      className="progress-bar"
-                      style={{
-                        width: `${Math.round((r.overduePct / overdueScale) * 100)}%`,
-                        background: isWorst ? "var(--destructive)" : "var(--primary)",
-                      }}
-                    />
+                    <div className={`progress-bar ${barTone}`} style={{ width: `${Math.max(6, Math.round((n / maxOverdueCount) * 100))}%` }} />
                   </div>
                 </div>
               );

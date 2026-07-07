@@ -143,27 +143,6 @@ export default function ContractorProfileDashboardPage() {
         <StatCard label="งานเดือนนี้" value={monthCount} icon={<IconClipboard size={18} />} deltaText="ก.ค." deltaTone="secondary" />
       </div>
 
-      {/* ── Work performance summary ──────────────────────── */}
-      <div className="ds-card section-block">
-        <div className="ds-card-header">
-          <div className="ds-card-title">สรุปผลการทำงาน</div>
-          <div className="ds-card-desc">ตัวชี้วัดคุณภาพงานของคุณ</div>
-        </div>
-        <div className="ds-card-content">
-          <div className="flex-between" style={{ marginBottom: "0.9rem" }}>
-            <span className="text-sm">คะแนนจากลูกค้า</span>
-            <span className="flex-row" style={{ gap: "0.4rem" }}>
-              <Stars value={avgRating} />
-              <span style={{ fontWeight: 700 }}>{avgRating != null ? avgRating.toFixed(1) : "—"}</span>
-              <span className="text-xs text-muted">/ 5</span>
-            </span>
-          </div>
-          <Meter label="อัตราความสำเร็จ" pct={successRate} tone="success" />
-          <Meter label="ส่งงานตรงเวลา" pct={onTimeRate} tone={onTimeRate >= 80 ? "success" : ""} />
-          <Meter label="เอกสารครบถ้วน" pct={docCompliancePct} tone={docCompliancePct >= 90 ? "success" : ""} />
-        </div>
-      </div>
-
       {/* ── Status split ──────────────────────────────────── */}
       <div className="ds-card section-block">
         <div className="ds-card-header">
@@ -205,7 +184,7 @@ export default function ContractorProfileDashboardPage() {
       {/* ── Account menu ──────────────────────────────────── */}
       <div className="ds-card section-block">
         <div className="ds-card-content profile-menu">
-          <Link href="/contractor/jobs" className="profile-menu-item">
+          <Link href="/contractor/history" className="profile-menu-item">
             <IconClipboard size={16} /> ประวัติงาน <IconChevronRight size={14} className="chev" />
           </Link>
           <Link href="/contractor/notifications" className="profile-menu-item">

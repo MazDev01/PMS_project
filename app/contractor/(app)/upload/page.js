@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Modal from "@/app/components/Modal";
 import SignaturePad from "@/app/components/SignaturePad";
-import { IconFileText, IconClock, IconMapPin, IconChevronLeft, IconShield } from "@/app/components/icons";
+import { IconFileText, IconClock, IconMapPin, IconChevronLeft, IconShield, IconX } from "@/app/components/icons";
 import { TODAY_ISO, personJobs, isJobLead, jobStatusLabel, jobStatusBadgeClass } from "@/app/lib/mockData";
 import { formatAddress } from "@/app/lib/thaiAddress";
 import { useJobs, useUploads, useStore, fileToDataUrl } from "@/app/lib/store";
@@ -14,20 +14,33 @@ import { formatDateTH } from "@/app/lib/format";
 // member) — every member uploads into the same before/during/after arrays,
 // each item tagged with who took it, so a 4-person crew doesn't produce 4x
 // duplicate galleries.
-function UploadStage({ label, hint, files, onSelect }) {
+const MAX_PHOTOS = 3;
+
+function UploadStage({ label, hint, files, onSelect, onRemove, disabled }) {
+  const full = files.length >= MAX_PHOTOS;
   return (
     <div className="upload-slot">
-      <h5>{label}</h5>
+      <h5>{label} <span className="upload-count">{files.length}/{MAX_PHOTOS}</span></h5>
       <p>{hint}</p>
-      <label className="btn btn-outline btn-sm" style={{ cursor: "pointer" }}>
-        เลือกรูปภาพ
-        <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onSelect} />
-      </label>
+      {!disabled && !full && (
+        <label className="btn btn-outline btn-sm" style={{ cursor: "pointer" }}>
+          เลือกรูปภาพ
+          <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onSelect} />
+        </label>
+      )}
+      {!disabled && full && (
+        <div className="text-xs text-muted">ครบ {MAX_PHOTOS} รูปแล้ว — กด ✕ ที่รูปเพื่อลบและเปลี่ยนรูปใหม่</div>
+      )}
       {files.length > 0 && (
         <div className="thumb-row">
           {files.map((item, i) => (
-            <div className="thumb" key={i} title={item.uploadedBy ? `ถ่ายโดย ${item.uploadedBy}` : ""}>
+            <div className="thumb upload-thumb" key={i} title={item.uploadedBy ? `ถ่ายโดย ${item.uploadedBy}` : ""}>
               <img src={item.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {!disabled && (
+                <button type="button" className="thumb-remove" aria-label="ลบรูป" title="ลบรูป" onClick={() => onRemove(i)}>
+                  <IconX size={12} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -43,8 +56,13 @@ export default function ContractorUploadPage() {
   const [selectedJobId, setSelectedJobId] = useState(null);
 
   const myJobs = personJobs(session?.personId, jobList);
+  // Photos/documents can only be added while a job is still in progress. Once
+  // it's delivered/closed nothing can be changed or added — so the picker only
+  // offers in-progress jobs, and an already-closed job renders read-only.
+  const uploadableJobs = myJobs.filter((j) => j.status === "in_progress");
   const todayJob = myJobs.find((j) => j.id === selectedJobId);
   const iAmLead = isJobLead(session?.personId, todayJob);
+  const locked = !!todayJob && todayJob.status !== "in_progress";
 
   const [upload, setUpload] = useUploads(selectedJobId);
 
@@ -53,11 +71,18 @@ export default function ContractorUploadPage() {
 
   async function handlePhotoChange(stage, e) {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    const dataUrls = await Promise.all(files.map(fileToDataUrl));
-    const items = dataUrls.map((url) => ({ url, uploadedBy: session?.name || "ช่างสาธิต" }));
-    setUpload((prev) => ({ ...prev, [stage]: [...prev[stage], ...items] }));
     e.target.value = "";
+    if (!files.length) return;
+    // Cap each stage at MAX_PHOTOS — only add up to the remaining free slots.
+    const remaining = MAX_PHOTOS - upload[stage].length;
+    if (remaining <= 0) return;
+    const dataUrls = await Promise.all(files.slice(0, remaining).map(fileToDataUrl));
+    const items = dataUrls.map((url) => ({ url, uploadedBy: session?.name || "ช่างสาธิต" }));
+    setUpload((prev) => ({ ...prev, [stage]: [...prev[stage], ...items].slice(0, MAX_PHOTOS) }));
+  }
+
+  function handleRemovePhoto(stage, index) {
+    setUpload((prev) => ({ ...prev, [stage]: prev[stage].filter((_, i) => i !== index) }));
   }
 
   function handlePdfChange(e) {
@@ -100,12 +125,12 @@ export default function ContractorUploadPage() {
     return (
       <div>
         <h2 style={{ fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.15rem" }}>ส่งรูปภาพ</h2>
-        <p className="text-xs text-muted" style={{ marginBottom: "1rem" }}>เลือกงานที่เข้าทำก่อน จึงจะส่งรูปภาพและเอกสารได้</p>
+        <p className="text-xs text-muted" style={{ marginBottom: "1rem" }}>เลือกงานที่กำลังดำเนินการเพื่อส่งรูปภาพและเอกสาร · งานที่ส่งมอบแล้วแก้ไข/เพิ่มไม่ได้</p>
 
-        {myJobs.length === 0 ? (
-          <div className="empty-state"><div>ยังไม่มีงานที่มอบหมายให้คุณ</div></div>
+        {uploadableJobs.length === 0 ? (
+          <div className="empty-state"><div>ไม่มีงานที่กำลังดำเนินการ — ส่งรูปได้เฉพาะงานที่ยังทำอยู่</div></div>
         ) : (
-          myJobs.map((job) => (
+          uploadableJobs.map((job) => (
             <div className="job-item" key={job.id}>
               <div className="job-item-top">
                 <div>
@@ -143,32 +168,47 @@ export default function ContractorUploadPage() {
         งานที่เลือก: {todayJob.customer} · {todayJob.jobType}
       </p>
 
+      {locked && (
+        <div className="ds-alert ds-alert-success flex-row" style={{ marginBottom: "1rem" }}>
+          <IconShield size={15} />
+          <div>งานนี้ส่งมอบ/ปิดเรียบร้อยแล้ว — ดูรูปที่อัปไว้ได้อย่างเดียว ไม่สามารถเปลี่ยนหรือเพิ่มได้อีก</div>
+        </div>
+      )}
+
       <UploadStage
         label="รูปก่อนทำ"
-        hint="ถ่ายภาพหน้างานก่อนเริ่มปฏิบัติงาน (.png / .jpg) — ทุกคนในทีมอัปโหลดร่วมกันได้"
+        hint="ถ่ายภาพหน้างานก่อนเริ่มปฏิบัติงาน (.png / .jpg) — สูงสุด 3 รูป"
         files={upload.before}
         onSelect={(e) => handlePhotoChange("before", e)}
+        onRemove={(i) => handleRemovePhoto("before", i)}
+        disabled={locked}
       />
       <UploadStage
         label="รูปขณะทำ"
-        hint="บันทึกภาพระหว่างขั้นตอนการปฏิบัติงาน เลือกได้หลายรูปพร้อมกัน"
+        hint="บันทึกภาพระหว่างขั้นตอนการปฏิบัติงาน — สูงสุด 3 รูป"
         files={upload.during}
         onSelect={(e) => handlePhotoChange("during", e)}
+        onRemove={(i) => handleRemovePhoto("during", i)}
+        disabled={locked}
       />
       <UploadStage
         label="รูปหลังทำ"
-        hint="ถ่ายภาพผลงานหลังปฏิบัติงานเสร็จสิ้นก่อนส่งมอบ"
+        hint="ถ่ายภาพผลงานหลังปฏิบัติงานเสร็จสิ้นก่อนส่งมอบ — สูงสุด 3 รูป"
         files={upload.after}
         onSelect={(e) => handlePhotoChange("after", e)}
+        onRemove={(i) => handleRemovePhoto("after", i)}
+        disabled={locked}
       />
 
       <div className="upload-slot">
         <h5>แนบไฟล์ใบส่งมอบงาน (PDF)</h5>
         <p>รองรับไฟล์ประเภท PDF เท่านั้น</p>
-        <label className="btn btn-outline btn-sm" style={{ cursor: "pointer" }}>
-          เลือกไฟล์ PDF
-          <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={handlePdfChange} />
-        </label>
+        {!locked && (
+          <label className="btn btn-outline btn-sm" style={{ cursor: "pointer" }}>
+            เลือกไฟล์ PDF
+            <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={handlePdfChange} />
+          </label>
+        )}
         {upload.deliveryFileName && (
           <div
             className="text-xs"
@@ -197,7 +237,7 @@ export default function ContractorUploadPage() {
         </div>
       )}
 
-      {iAmLead ? (
+      {!locked && (iAmLead ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "1.25rem" }}>
           <button type="button" className="btn btn-secondary btn-md btn-block" onClick={handleSendToCoordinator}>
             ส่งให้ผู้ประสานงานออกลิงก์
@@ -211,7 +251,7 @@ export default function ContractorUploadPage() {
           <IconShield size={15} />
           <div>การส่งเอกสารให้ผู้ประสานงานและเซ็นรับงานทำได้โดยหัวหน้างานของงานนี้เท่านั้น — คุณอัปโหลดรูปภาพได้ตามปกติ</div>
         </div>
-      )}
+      ))}
 
       <Modal
         open={sigModalOpen}
