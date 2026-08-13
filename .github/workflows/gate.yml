@@ -1,0 +1,27 @@
+name: gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest # linux นับโควตา 1x · windows 2x · macos 10x
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # smoke ใช้ playwright-core ซึ่งไม่โหลดเบราว์เซอร์มาเอง
+      # เครื่อง dev ใช้ Edge ที่มีอยู่แล้ว · CI ต้องลง chromium
+      - run: npx playwright install --with-deps chromium
+
+      - name: gate --full
+        env:
+          SMOKE_BROWSER_CHANNEL: chromium
+        run: ./gate.sh --full
