@@ -8,7 +8,7 @@
 
 | คำสั่ง | ใช้เมื่อไหร่ |
 |---|---|
-| `./gate.sh` | ก่อน commit (pre-commit เรียกให้เอง) — tsc เท่านั้น ~9-13 วิ |
+| `./gate.sh` | ก่อน push (pre-push เรียกให้เอง) — tsc เท่านั้น ~12-16 วิ |
 | `./gate.sh --full` | สิ่งที่ CI รัน — tsc + lint ratchet + build + render smoke |
 | `node scripts/scope.mjs <ชื่อ>` | **ก่อนแก้อะไรก็ตาม** — ดูว่ากระทบที่ไหนบ้าง (~20 วิ ไม่ใช่ gate) |
 | `node scripts/ratchet.mjs --update` | หลังแก้ปัญหา lint เก่าได้แล้ว |
