@@ -1,8 +1,17 @@
 name: gate
 
 on:
+  # แยกกันแบบนี้เพื่อไม่ให้รันซ้ำสองรอบ
+  # ถ้าเขียน push: เปล่า ๆ คู่กับ pull_request: พอ push ขึ้นกิ่งที่มี PR เปิดอยู่
+  # จะรันทั้งสอง event = เผาโควตาเป็นสองเท่าโดยไม่ได้อะไรเพิ่ม
   push:
-  pull_request:
+    branches: [main] # main รันตอน merge เข้ามา
+  pull_request: # กิ่งอื่นรันผ่าน PR อย่างเดียว
+
+concurrency:
+  # push ซ้ำติด ๆ กัน = ยกเลิกรอบเก่าที่ยังค้าง ไม่ปล่อยให้รันทิ้งจนจบ
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   gate:
