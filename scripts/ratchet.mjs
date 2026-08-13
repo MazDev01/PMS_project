@@ -31,9 +31,22 @@ const WATCHED = [
   "@typescript-eslint/no-unused-vars",
 ];
 
+/** โฟลเดอร์ที่จะให้ eslint ตรวจ — มาจาก standard/config.json */
+function lintPaths() {
+  try {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(ROOT, "standard", "config.json"), "utf8"),
+    );
+    if (Array.isArray(cfg.lintPaths) && cfg.lintPaths.length) return cfg.lintPaths;
+  } catch {
+    /* ใช้ค่าเริ่มต้น */
+  }
+  return ["src"];
+}
+
 function runEslint() {
   const bin = path.join(ROOT, "node_modules", "eslint", "bin", "eslint.js");
-  const res = spawnSync(process.execPath, [bin, "--format", "json", "src"], {
+  const res = spawnSync(process.execPath, [bin, "--format", "json", ...lintPaths()], {
     cwd: ROOT,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,

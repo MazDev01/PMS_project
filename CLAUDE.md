@@ -1,3 +1,5 @@
+<!-- standard: v1.0 — https://github.com/MazDev01/dev-standard -->
+
 @AGENTS.md
 
 # วิธีทำงานกับโปรเจกต์นี้
@@ -8,12 +10,14 @@
 
 | คำสั่ง | ใช้เมื่อไหร่ |
 |---|---|
-| `./gate.sh` | ก่อน push (pre-push เรียกให้เอง) — tsc เท่านั้น ~12-16 วิ |
+| `./gate.sh` | ก่อน push (pre-push เรียกให้เอง) — tsc เท่านั้น |
 | `./gate.sh --full` | สิ่งที่ CI รัน — tsc + lint ratchet + build + render smoke |
-| `node scripts/scope.mjs <ชื่อ>` | **ก่อนแก้อะไรก็ตาม** — ดูว่ากระทบที่ไหนบ้าง (~20 วิ ไม่ใช่ gate) |
+| `node scripts/scope.mjs <ชื่อ>` | **ก่อนแก้อะไรก็ตาม** — ดูว่ากระทบที่ไหนบ้าง (ไม่ใช่ gate) |
 | `node scripts/ratchet.mjs --update` | หลังแก้ปัญหา lint เก่าได้แล้ว |
 
 ตั้ง hook ครั้งเดียวต่อเครื่อง: `git config core.hooksPath .githooks`
+
+ค่าเฉพาะของโปรเจกต์ (route ที่ smoke ตรวจ, โฟลเดอร์ที่ lint) อยู่ใน `standard/config.json`
 
 ## ขอบเขตการแก้ — กติกาบังคับตัวเอง
 
@@ -47,3 +51,9 @@
 และ **ห้ามเพิ่มค่า enum แล้ว UPDATE ไปใช้ค่านั้นใน migration เดียวกัน** Postgres ไม่อนุญาต
 
 ⚠️ ห้ามรัน `supabase db reset` กับ production เด็ดขาด — มันล้างข้อมูล
+
+## ความปลอดภัยกับฐานข้อมูล
+
+- `CLAUDE.md` · `scope.mjs` · `gate.sh` · `ratchet.mjs` — **ไม่แตะ DB เลย** อ่านโค้ดอย่างเดียว
+- `smoke.mjs` — **เปิดแอปจริง** จะคุยกับ DB ที่ `.env` ชี้ไว้ → **ห้ามชี้ไป production**
+- **ห้ามใส่ credential ของ production ใน CI secrets** เด็ดขาด

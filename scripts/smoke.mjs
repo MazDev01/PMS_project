@@ -18,20 +18,29 @@
  *   BASE_URL              ถ้าใส่ จะไม่เปิด server เอง
  *   SMOKE_BROWSER_CHANNEL เบราว์เซอร์ที่ใช้ (default: msedge · CI ใช้ chromium)
  */
+import fs from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const ROUTES = [
-  "/login",
-  "/dashboard",
-  "/jobs",
-  "/schedule",
-  "/warranty",
-  "/admin/users",
-  "/admin/master-data",
-  "/contractor/login",
-];
+/** route มาจาก standard/config.json — แก้ที่นั่น ไม่ต้องแก้ไฟล์นี้ */
+function loadRoutes() {
+  const configPath = fileURLToPath(
+    new URL("../standard/config.json", import.meta.url),
+  );
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (Array.isArray(cfg.smokeRoutes) && cfg.smokeRoutes.length) {
+      return cfg.smokeRoutes;
+    }
+  } catch {
+    /* ไม่มีไฟล์ config ก็ใช้ค่าเริ่มต้น */
+  }
+  console.log("  (ไม่พบ smokeRoutes ใน standard/config.json — ตรวจแค่ '/')");
+  return ["/"];
+}
+
+const ROUTES = loadRoutes();
 
 /** ต่ำกว่านี้ถือว่าหน้าว่าง */
 const MIN_BODY_TEXT = 40;

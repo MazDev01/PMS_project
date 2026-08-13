@@ -1,0 +1,20 @@
+{
+  "_comment": "ค่าเฉพาะของแต่ละโปรเจกต์ — แก้ไฟล์นี้ ไม่ต้องแก้สคริปต์",
+
+  "smokeRoutes": [
+    "/login",
+    "/dashboard",
+    "/jobs",
+    "/schedule",
+    "/warranty",
+    "/admin/users",
+    "/admin/master-data",
+    "/contractor/login"
+  ],
+  "_smokeRoutes": "route ที่ render smoke จะเปิดตรวจ เลือกที่เข้าได้โดยไม่ต้องล็อกอินและไม่มี param",
+
+  "lintPaths": [
+    "src"
+  ],
+  "_lintPaths": "โฟลเดอร์ที่ ratchet จะให้ eslint ตรวจ"
+}
