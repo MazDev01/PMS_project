@@ -1,0 +1,23 @@
+# บังคับ LF ทุกไฟล์ข้อความ ทั้งใน repo และในเครื่อง
+#
+# ทำตอน restructure ที่แตะทุกไฟล์อยู่แล้ว = จังหวะถูกที่สุด
+# ถ้า normalize ทีหลังจะกลายเป็น commit ยักษ์ที่ชนกับ branch ของทุกคน
+#
+# สำคัญเป็นพิเศษกับ .githooks/* และ *.sh — ถ้าไฟล์เป็น CRLF
+# bash จะพังด้วย "bad interpreter: /usr/bin/env bash^M" แล้ว gate จะไม่ทำงานเลย
+* text=auto eol=lf
+
+# บังคับชัดเจนสำหรับสคริปต์ที่ต้องรันด้วย bash
+*.sh text eol=lf
+.githooks/* text eol=lf
+
+# ไบนารี — ห้ามแตะ
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
