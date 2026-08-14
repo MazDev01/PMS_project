@@ -229,11 +229,11 @@ export default function AdminDashboardPage() {
 
       {/* Headline KPIs */}
       <div className="kpi-grid">
-        <StatCard label="มูลค่างานเข้าใหม่" subLabel={`${totalJobs} งานในช่วงที่เลือก`} value={formatTHB(newJobsValue)} icon={<IconBriefcase size={18} />} deltaText="รับงานเข้า" deltaTone="secondary" />
-        <StatCard label="มูลค่างานที่ปิดสำเร็จ" subLabel={`${doneJobs} งานปิดในช่วงนี้`} value={formatTHB(revenueInRange)} icon={<IconDollar size={18} />} deltaText="รายรับในช่วง" deltaTone="success" />
-        <StatCard label="เงินค้างรับ" subLabel={`${outstandingList.length} งานยังไม่เก็บเงิน`} value={formatTHB(outstandingValue)} icon={<IconClock size={18} />} deltaText="รอเก็บ" deltaTone="warning" />
-        <StatCard label="งานเกินกำหนดนัดหมาย" subLabel={`${overdueJobs} จาก ${inProgressJobs} งานที่กำลังทำ`} value={`${overduePct}%`} icon={<IconAlertTriangle size={18} />} deltaText={overdueJobs > 0 ? "ควรติดตามด่วน" : "ไม่มีงานค้าง"} deltaTone={overdueJobs > 0 ? "destructive" : "success"} />
-        <StatCard label="อัตราแจ้งเคลม" subLabel={`${repairJobs} เคลม จาก ${completedCount} งานที่เสร็จ`} value={`${claimRate}%`} icon={<IconShield size={18} />} deltaText="หลังส่งมอบ" deltaTone={claimRate > 15 ? "warning" : "success"} />
+        <StatCard animate label="มูลค่างานเข้าใหม่" subLabel={`${totalJobs} งานในช่วงที่เลือก`} value={formatTHB(newJobsValue)} icon={<IconBriefcase size={18} />} deltaText="รับงานเข้า" deltaTone="secondary" />
+        <StatCard animate label="มูลค่างานที่ปิดสำเร็จ" subLabel={`${doneJobs} งานปิดในช่วงนี้`} value={formatTHB(revenueInRange)} icon={<IconDollar size={18} />} deltaText="รายรับในช่วง" deltaTone="success" />
+        <StatCard animate label="เงินค้างรับ" subLabel={`${outstandingList.length} งานยังไม่เก็บเงิน`} value={formatTHB(outstandingValue)} icon={<IconClock size={18} />} deltaText="รอเก็บ" deltaTone="warning" />
+        <StatCard animate label="งานเกินกำหนดนัดหมาย" subLabel={`${overdueJobs} จาก ${inProgressJobs} งานที่กำลังทำ`} value={`${overduePct}%`} icon={<IconAlertTriangle size={18} />} deltaText={overdueJobs > 0 ? "ควรติดตามด่วน" : "ไม่มีงานค้าง"} deltaTone={overdueJobs > 0 ? "destructive" : "success"} />
+        <StatCard animate label="อัตราแจ้งเคลม" subLabel={`${repairJobs} เคลม จาก ${completedCount} งานที่เสร็จ`} value={`${claimRate}%`} icon={<IconShield size={18} />} deltaText="หลังส่งมอบ" deltaTone={claimRate > 15 ? "warning" : "success"} />
       </div>
 
       {/* Revenue trend — full width, follows the page date filter */}

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Modal from "@/app/components/Modal";
 import DataTable from "@/app/components/DataTable";
 import ViewOnlyBanner from "@/app/components/ViewOnlyBanner";
 import {
-  IconFileText, IconCalendar, IconTruck, IconDownload, IconUpload, IconAlertTriangle,
+  IconFileText, IconCalendar, IconTruck, IconDownload, IconUpload, IconAlertTriangle, IconTrash,
 } from "@/app/components/icons";
 import { useTableRows, TableToolbar } from "@/app/components/TableControls";
 import { TODAY_ISO } from "@/app/lib/mockData";
@@ -45,10 +45,29 @@ export default function CoordinatorLinksPage() {
   const [resultUrl, setResultUrl] = useState(null);
   const [copiedKey, setCopiedKey] = useState(null);
   const [jobSearch, setJobSearch] = useState("");
-  const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const jobPickerRef = useRef(null);
+  const [editLink, setEditLink] = useState(null);
+  const [editExpiry, setEditExpiry] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Close the job dropdown when clicking anywhere outside it.
+  useEffect(() => {
+    if (!pickerOpen) return undefined;
+    function onDown(e) {
+      if (jobPickerRef.current && !jobPickerRef.current.contains(e.target)) setPickerOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [pickerOpen]);
 
   const activeType = LINK_TYPES.find((lt) => lt.type === modalType);
-  const { search, setSearch, sortBy, setSortBy, rows: linkRows, resultCount, isFiltered } = useTableRows(links, {
+  const selectedJob = jobs.find((j) => j.id === selectedJobId);
+  // Cancelled/revoked links are not shown at all — the coordinator deletes what
+  // they no longer need rather than keeping a dead row around.
+  const visibleLinks = links.filter((l) => l.status !== "revoked");
+  const { search, setSearch, sortBy, setSortBy, rows: linkRows, resultCount, isFiltered } = useTableRows(visibleLinks, {
     searchFields: (l) => [l.label, l.jobId, l.customer, l.id],
     sortOptions: [
       { key: "default", label: "เรียงตามล่าสุด" },
@@ -62,7 +81,8 @@ export default function CoordinatorLinksPage() {
     setModalType(type);
     setResultUrl(null);
     setJobSearch("");
-    setSelectedJobId(jobs[0]?.id);
+    setSelectedJobId("");
+    setPickerOpen(false);
   }
 
   function closeModal() {
@@ -78,9 +98,35 @@ export default function CoordinatorLinksPage() {
     setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1500);
   }
 
-  function handleRevoke(id) {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, status: "revoked" } : l)));
-    addAuditLog({ actor, role: actorRole, action: "ยกเลิกลิงก์เอกสาร", target: id });
+  function handleDelete(id) {
+    setLinks((prev) => prev.filter((l) => l.id !== id));
+    addAuditLog({ actor, role: actorRole, action: "ลบลิงก์เอกสาร", target: id });
+  }
+
+  // ISO string → the "YYYY-MM-DDTHH:mm" shape a <input type="datetime-local"> wants.
+  function isoToLocalInput(iso) {
+    const d = new Date(iso);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openEdit(link) {
+    setEditLink(link);
+    setEditExpiry(isoToLocalInput(link.expiresAt));
+  }
+
+  function saveEdit(e) {
+    e.preventDefault();
+    if (!editLink) return;
+    const newISO = editExpiry ? new Date(editExpiry).toISOString() : editLink.expiresAt;
+    // Re-derive status from the new expiry — a revoked link stays revoked, but an
+    // expired link with a future date reopens as active (and vice-versa).
+    const newStatus = editLink.status === "revoked"
+      ? "revoked"
+      : (newISO.slice(0, 10) >= TODAY_ISO ? "active" : "expired");
+    setLinks((prev) => prev.map((l) => (l.id === editLink.id ? { ...l, expiresAt: newISO, status: newStatus } : l)));
+    addAuditLog({ actor, role: actorRole, action: "แก้ไขวันหมดอายุลิงก์", target: editLink.id });
+    setEditLink(null);
   }
 
   function handleDownloadBackup() {
@@ -106,6 +152,7 @@ export default function CoordinatorLinksPage() {
 
   function handleGenerate(e) {
     e.preventDefault();
+    if (!selectedJobId) return;
     const form = e.target;
     const job = jobs.find((j) => j.id === selectedJobId);
     const token = Math.random().toString(36).slice(2, 10);
@@ -208,19 +255,26 @@ export default function CoordinatorLinksPage() {
               key: "actions",
               label: "",
               render: (r) => (
-                <div className="flex-row">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    disabled={viewOnly}
-                    title={viewOnly ? "ดูอย่างเดียว — คัดลอกลิงก์ไม่ได้" : undefined}
-                    onClick={() => handleCopy(`https://pms.maccalight.co.th/guest/${guestRouteFor(r.type)}?token=${r.token}`, r.id)}
-                  >
-                    {copiedKey === r.id ? "คัดลอกแล้ว" : "คัดลอกลิงก์"}
-                  </button>
-                  {r.status === "active" && !viewOnly && (
-                    <button type="button" className="btn btn-sm btn-destructive" onClick={() => handleRevoke(r.id)}>
-                      ยกเลิก/ปิดการเข้าถึง
+                <div className="flex-row" style={{ flexWrap: "wrap", gap: "0.4rem" }}>
+                  {r.status !== "revoked" && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      disabled={viewOnly}
+                      title={viewOnly ? "ดูอย่างเดียว — คัดลอกลิงก์ไม่ได้" : undefined}
+                      onClick={() => handleCopy(`https://pms.maccalight.co.th/guest/${guestRouteFor(r.type)}?token=${r.token}`, r.id)}
+                    >
+                      {copiedKey === r.id ? "คัดลอกแล้ว" : "คัดลอกลิงก์"}
+                    </button>
+                  )}
+                  {r.status !== "revoked" && !viewOnly && (
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(r)}>
+                      <IconCalendar size={13} /> แก้ไขวันหมดอายุ
+                    </button>
+                  )}
+                  {!viewOnly && (
+                    <button type="button" className="btn btn-sm btn-destructive" onClick={() => setDeleteTarget(r)}>
+                      <IconTrash size={13} /> ลบลิงก์
                     </button>
                   )}
                 </div>
@@ -257,11 +311,12 @@ export default function CoordinatorLinksPage() {
         onClose={closeModal}
         title={`สร้างลิงก์${activeType?.label || ""}`}
         description="กำหนดวันหมดอายุและสิทธิ์การเข้าถึงก่อนส่งลิงก์ให้ลูกค้า"
+        bodyOverflow="visible"
         footer={
           !resultUrl ? (
             <>
               <button type="button" className="btn btn-md btn-secondary" onClick={closeModal}>ยกเลิก</button>
-              <button type="submit" form="link-form" className="btn btn-md btn-default">สร้างลิงก์</button>
+              <button type="submit" form="link-form" className="btn btn-md btn-default" disabled={!selectedJobId}>สร้างลิงก์</button>
             </>
           ) : (
             <button type="button" className="btn btn-md btn-default" onClick={closeModal}>เสร็จสิ้น</button>
@@ -272,64 +327,88 @@ export default function CoordinatorLinksPage() {
           <form id="link-form" onSubmit={handleGenerate}>
             <div className="form-group">
               <label className="ds-label">เลือกงาน</label>
-              <input
-                className="ds-input"
-                placeholder="ค้นหา เลขที่งาน / ลูกค้า"
-                value={jobSearch}
-                onChange={(e) => setJobSearch(e.target.value)}
-              />
-              {(() => {
-                const q = jobSearch.trim().toLowerCase();
-                const filtered = q
-                  ? jobs.filter(
-                      (j) =>
-                        j.id.toLowerCase().includes(q) ||
-                        (j.customer || "").toLowerCase().includes(q)
-                    )
-                  : jobs;
-                return (
-                  <div
-                    style={{
-                      marginTop: "0.5rem",
-                      maxHeight: 220,
-                      overflowY: "auto",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-md)",
-                    }}
-                  >
-                    {filtered.length === 0 ? (
-                      <div className="text-sm text-muted" style={{ padding: "0.75rem" }}>
-                        ไม่พบงานที่ตรงกับคำค้นหา
-                      </div>
-                    ) : (
-                      filtered.map((j) => {
-                        const isSelected = j.id === selectedJobId;
-                        return (
-                          <button
-                            type="button"
-                            key={j.id}
-                            onClick={() => setSelectedJobId(j.id)}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              textAlign: "left",
-                              padding: "0.5rem 0.75rem",
-                              border: "none",
-                              borderBottom: "1px solid var(--border)",
-                              cursor: "pointer",
-                              background: isSelected ? "oklch(0.55 0.18 240 / 0.08)" : "transparent",
-                              fontWeight: isSelected ? 600 : 400,
-                            }}
-                          >
-                            <span className="text-sm">{j.id} — {j.customer}</span>
-                            <span className="text-xs text-muted"> · {j.jobType}</span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                );
-              })()}
+              <div ref={jobPickerRef} style={{ position: "relative" }}>
+                <input
+                  className="ds-input"
+                  placeholder="เลือกงาน"
+                  value={pickerOpen ? jobSearch : (selectedJob ? `${selectedJob.id} — ${selectedJob.customer}` : "")}
+                  onFocus={() => { setPickerOpen(true); setJobSearch(""); }}
+                  onChange={(e) => setJobSearch(e.target.value)}
+                  style={{ cursor: "pointer", paddingRight: "1.9rem" }}
+                />
+                <span
+                  style={{
+                    position: "absolute",
+                    right: "0.7rem",
+                    top: "50%",
+                    transform: `translateY(-50%) rotate(${pickerOpen ? "180deg" : "0deg"})`,
+                    pointerEvents: "none",
+                    color: "var(--muted-foreground)",
+                    fontSize: "0.7rem",
+                    transition: "transform 0.15s ease",
+                  }}
+                >
+                  ▾
+                </span>
+                {pickerOpen && (() => {
+                  const q = jobSearch.trim().toLowerCase();
+                  const filtered = q
+                    ? jobs.filter(
+                        (j) =>
+                          j.id.toLowerCase().includes(q) ||
+                          (j.customer || "").toLowerCase().includes(q)
+                      )
+                    : jobs;
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 4px)",
+                        left: 0,
+                        right: 0,
+                        zIndex: 40,
+                        maxHeight: 240,
+                        overflowY: "auto",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--card)",
+                        boxShadow: "var(--shadow-lg)",
+                      }}
+                    >
+                      {filtered.length === 0 ? (
+                        <div className="text-sm text-muted" style={{ padding: "0.75rem" }}>
+                          ไม่พบงานที่ตรงกับคำค้นหา
+                        </div>
+                      ) : (
+                        filtered.map((j) => {
+                          const isSelected = j.id === selectedJobId;
+                          return (
+                            <button
+                              type="button"
+                              key={j.id}
+                              onClick={() => { setSelectedJobId(j.id); setPickerOpen(false); }}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                textAlign: "left",
+                                padding: "0.5rem 0.75rem",
+                                border: "none",
+                                borderBottom: "1px solid var(--border)",
+                                cursor: "pointer",
+                                background: isSelected ? "oklch(0.55 0.18 240 / 0.08)" : "transparent",
+                                fontWeight: isSelected ? 600 : 400,
+                              }}
+                            >
+                              <span className="text-sm">{j.id} — {j.customer}</span>
+                              <span className="text-xs text-muted"> · {j.jobType}</span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
             <div className="form-group">
               <label className="ds-label">กำหนดวันหมดอายุ</label>
@@ -353,6 +432,67 @@ export default function CoordinatorLinksPage() {
               </button>
             </div>
             <span className="ds-helper">ส่งลิงก์นี้ให้ลูกค้าผ่าน LINE หรือ SMS เพื่อเข้าดูและเซ็นเอกสารออนไลน์</span>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!editLink}
+        onClose={() => setEditLink(null)}
+        title="แก้ไขวันหมดอายุลิงก์"
+        description={editLink ? `${editLink.label} · ${editLink.jobId} — ${editLink.customer}` : ""}
+        maxWidth={420}
+        footer={
+          <>
+            <button type="button" className="btn btn-md btn-secondary" onClick={() => setEditLink(null)}>ยกเลิก</button>
+            <button type="submit" form="edit-expiry-form" className="btn btn-md btn-default">บันทึก</button>
+          </>
+        }
+      >
+        {editLink && (
+          <form id="edit-expiry-form" onSubmit={saveEdit}>
+            <div className="form-group">
+              <label className="ds-label">วันหมดอายุใหม่</label>
+              <input
+                className="ds-input"
+                type="datetime-local"
+                value={editExpiry}
+                onChange={(e) => setEditExpiry(e.target.value)}
+              />
+              <span className="ds-helper">เดิม: {formatDateTimeTH(editLink.expiresAt)}</span>
+            </div>
+            <div className="text-xs text-muted">
+              หากตั้งวันหมดอายุเป็นอนาคต ลิงก์ที่หมดอายุแล้วจะกลับมาใช้งานได้อีกครั้ง
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="ยืนยันการลบลิงก์"
+        description="การลบนี้ไม่สามารถย้อนกลับได้"
+        maxWidth={400}
+        footer={
+          <>
+            <button type="button" className="btn btn-md btn-secondary" onClick={() => setDeleteTarget(null)}>ยกเลิก</button>
+            <button
+              type="button"
+              className="btn btn-md btn-destructive"
+              onClick={() => { handleDelete(deleteTarget.id); setDeleteTarget(null); }}
+            >
+              <IconTrash size={14} /> ลบลิงก์
+            </button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <div className="text-sm">
+            ต้องการลบลิงก์ <strong>{deleteTarget.label}</strong> ของงาน <strong>{deleteTarget.jobId} — {deleteTarget.customer}</strong> ใช่หรือไม่?
+            <div className="text-xs text-muted" style={{ marginTop: "0.5rem" }}>
+              ลูกค้าจะเข้าลิงก์นี้ไม่ได้อีก และรายการจะหายจากระบบทันที
+            </div>
           </div>
         )}
       </Modal>
