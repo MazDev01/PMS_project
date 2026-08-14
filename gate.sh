@@ -30,9 +30,12 @@ fail() { echo ""; echo "✗ gate ไม่ผ่าน: $1"; exit 1; }
 
 start=$(date +%s)
 
+echo "→ lint ratchet"
+node scripts/ratchet.mjs || fail "lint แย่ลงกว่าเลขฐาน"
+
 if [[ $FULL -eq 0 ]]; then
-  echo "⚠ ชั้นเร็ว: โปรเจกต์นี้ยังไม่มีเครื่องมือตรวจที่เร็วพอ (ไม่มี TypeScript / ไม่มี eslint)"
-  echo "  ไม่ได้ตรวจอะไรเลย — ใช้ ./gate.sh --full ก่อน push"
+  echo ""
+  echo "✓ gate ผ่าน ($(( $(date +%s) - start )) วิ) — ชั้นเร็ว"
   exit 0
 fi
 

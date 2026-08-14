@@ -8,9 +8,10 @@
 
 | คำสั่ง | ใช้เมื่อไหร่ |
 |---|---|
-| `./gate.sh --full` | ก่อน push — build + render smoke (pre-push เรียกให้เอง) |
-| `./gate.sh` | ชั้นเร็ว — **ตอนนี้ยังไม่มีอะไรให้ตรวจ** ดูเหตุผลใน `gate.sh` |
+| `./gate.sh` | ชั้นเร็ว — lint ratchet (~22–39 วิ เมื่อ cache อุ่น) |
+| `./gate.sh --full` | ก่อน push — lint + build + render smoke (pre-push เรียกให้เอง) |
 | `node scripts/scope.mjs <ชื่อ>` | **ก่อนแก้อะไรก็ตาม** — ดูว่ากระทบที่ไหนบ้าง (~14 วิ ไม่ใช่ gate) |
+| `node scripts/ratchet.mjs --update` | หลังแก้ปัญหา lint เก่าได้แล้ว |
 
 ตั้ง hook ครั้งเดียวต่อเครื่อง: `git config core.hooksPath .githooks`
 
