@@ -1,0 +1,18 @@
+{
+  "_comment": "ค่าเฉพาะของโปรเจกต์นี้ — แก้ไฟล์นี้ ไม่ต้องแก้สคริปต์",
+  "smokeRoutes": [
+    "/",
+    "/coordinator/login",
+    "/coordinator/dashboard",
+    "/coordinator/jobs",
+    "/admin/login",
+    "/admin/dashboard",
+    "/contractor/login",
+    "/guest"
+  ],
+  "_smokeRoutes": "route ที่ render smoke จะเปิดตรวจ · โฟลเดอร์ (app) เป็น route group จึงไม่อยู่ใน URL",
+  "lintPaths": [
+    "app"
+  ],
+  "_lintPaths": "โฟลเดอร์ที่ ratchet จะให้ eslint ตรวจ"
+}

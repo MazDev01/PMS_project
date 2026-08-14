@@ -1,0 +1,14 @@
+{
+  "_comment": "เลขฐานของ lint ratchet — gate บล็อกเมื่อจำนวนเพิ่มขึ้นจากนี่ ไม่ได้บังคับให้เป็นศูนย์ แก้ปัญหาเก่าได้แล้วให้รัน: node scripts/ratchet.mjs --update",
+  "errors": 14,
+  "warnings": 4,
+  "byRule": {
+    "react/no-unescaped-entities": 6,
+    "react-hooks/set-state-in-effect": 6,
+    "react-hooks/immutability": 2,
+    "@next/next/no-img-element": 3,
+    "@next/next/no-page-custom-font": 1,
+    "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/no-unused-vars": 0
+  }
+}

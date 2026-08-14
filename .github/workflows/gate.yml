@@ -1,0 +1,39 @@
+name: gate
+
+on:
+  # แยกกันแบบนี้เพื่อไม่ให้รันซ้ำสองรอบ
+  # ถ้าเขียน push: เปล่า ๆ คู่กับ pull_request: พอ push ขึ้นกิ่งที่มี PR เปิดอยู่
+  # จะรันทั้งสอง event = เผาโควตาเป็นสองเท่าโดยไม่ได้อะไรเพิ่ม
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest # linux นับโควตา 1x · windows 2x · macos 10x
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # ลงเบราว์เซอร์ให้ตรงเวอร์ชันกับ playwright-core ที่อยู่ใน node_modules
+      # (ใช้ playwright ตัวเต็มจาก npx จะได้เบราว์เซอร์คนละ revision กับที่ core คาดไว้)
+      - name: ลง chromium
+        run: npx playwright-core install --with-deps chromium
+
+      # เรียกผ่าน bash ตรง ๆ ไม่พึ่ง execute bit
+      # เครื่อง dev เป็น Windows ที่ core.fileMode=false → chmod ถูกเมิน
+      # ไฟล์อาจถูก commit เป็น 100644 แล้ว ./gate.sh จะ Permission denied บน Linux
+      - name: gate --full
+        env:
+          SMOKE_BROWSER_CHANNEL: "" # ว่าง = ใช้ chromium ที่ playwright ลงให้ ไม่ใช่ Edge
+        run: bash ./gate.sh --full
