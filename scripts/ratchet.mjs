@@ -124,9 +124,10 @@ ${dirty.slice(0, 10).map((l) => "    " + l).join("\n")}${dirty.length > 10 ? `\n
   process.exit(1);
 }
 
-const current = countByRule(runEslint());
-
+// ตรวจ tree ก่อนรัน eslint — ถ้าจะปฏิเสธอยู่แล้วก็ไม่ต้องเสียเวลา lint หลายสิบวินาที
 if (update && !process.argv.includes("--allow-dirty")) assertCleanTree();
+
+const current = countByRule(runEslint());
 
 if (update || !fs.existsSync(BASELINE)) {
   fs.mkdirSync(path.dirname(BASELINE), { recursive: true });

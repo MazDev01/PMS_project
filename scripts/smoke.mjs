@@ -139,6 +139,18 @@ async function checkRoute(browser, base, route) {
   const page = await context.newPage();
   const problems = [];
 
+  /**
+   * เก็บ URL ของ resource ที่โหลดไม่สำเร็จ
+   * ข้อความ console ของเบราว์เซอร์เขียนแค่ "Failed to load resource: ... 404 ()"
+   * ไม่บอกว่าไฟล์ไหน ทำให้วินิจฉัยไม่ได้เลย ต้องดักที่ response แทน
+   */
+  const badResponses = [];
+  page.on("response", (res) => {
+    if (res.status() >= 400) {
+      badResponses.push(`${res.status()} ${res.url().replace(base, "")}`);
+    }
+  });
+
   page.on("console", (msg) => {
     if (msg.type() === "error" && !isIgnorable(msg.text())) {
       problems.push(`console.error: ${msg.text().slice(0, 200)}`);
@@ -164,6 +176,11 @@ async function checkRoute(browser, base, route) {
     problems.push(`โหลดไม่สำเร็จ: ${String(err).split("\n")[0]}`);
   } finally {
     await context.close();
+  }
+
+  // ต่อท้ายรายชื่อ resource ที่พัง เพื่อให้รู้ว่า 404 คือไฟล์ไหน
+  if (problems.length && badResponses.length) {
+    problems.push(`resource ที่พัง: ${[...new Set(badResponses)].join(" · ")}`);
   }
 
   return problems;
