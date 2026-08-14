@@ -280,6 +280,20 @@ export function DualLineChart({ data = [], series = [], width = 640, height = 19
         {data.map((d, i) => (showLabel(i) ? (
           <line key={`v${i}`} x1={xAt(i)} y1={padTop} x2={xAt(i)} y2={bottom} stroke="var(--border)" strokeDasharray="3 3" />
         ) : null))}
+        <defs>
+          {series.map((s, si) => (
+            <linearGradient key={s.key} id={`dualarea-${id}-${si}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.24" />
+              <stop offset="95%" stopColor={s.color} stopOpacity="0" />
+            </linearGradient>
+          ))}
+        </defs>
+        {/* Gradient area fill under each line, tinted to match its line colour */}
+        {series.map((s, si) => {
+          const pts = data.map((d, i) => ({ x: xAt(i), y: yAt(d[s.key] || 0) }));
+          const areaD = `${smoothPath(pts)} L${pts[pts.length - 1].x.toFixed(1)},${bottom} L${pts[0].x.toFixed(1)},${bottom} Z`;
+          return <path key={`area-${s.key}`} d={areaD} fill={`url(#dualarea-${id}-${si})`} className="chart-area" style={{ animationDelay: `${si * 0.2}s` }} />;
+        })}
         {series.map((s, si) => {
           const pts = data.map((d, i) => ({ x: xAt(i), y: yAt(d[s.key] || 0) }));
           return (

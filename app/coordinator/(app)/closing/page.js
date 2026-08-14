@@ -93,6 +93,14 @@ export default function CoordinatorClosingPage() {
     setConfirmJob(null);
   }
 
+  // Demo stand-in for the Mango payment sync — lets the coordinator mark a job
+  // as paid so the "Confirm ปิดงาน" flow can be completed without a live Mango.
+  function handleMarkPaid(jobId) {
+    setJobList((prev) => prev.map((j) => (j.id === jobId ? { ...j, paymentStatus: "ชำระแล้ว" } : j)));
+    addAuditLog({ actor, role: actorRole, action: "บันทึกรับชำระเงินแล้ว (ซิงค์จาก Mango)", target: jobId });
+    setContactJob(null);
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -247,7 +255,14 @@ export default function CoordinatorClosingPage() {
         title="ข้อมูลติดต่อลูกค้า"
         description={contactJob ? `${contactJob.id} — ${contactJob.customer}` : ""}
         footer={
-          <button type="button" className="btn btn-md btn-secondary" onClick={() => setContactJob(null)}>ปิด</button>
+          <>
+            {contactJob && contactJob.paymentStatus !== "ชำระแล้ว" && !viewOnly && (
+              <button type="button" className="btn btn-md btn-primary-flat" onClick={() => handleMarkPaid(contactJob.id)}>
+                <IconCheck size={15} /> ยืนยันรับชำระเงินแล้ว
+              </button>
+            )}
+            <button type="button" className="btn btn-md btn-secondary" onClick={() => setContactJob(null)}>ปิด</button>
+          </>
         }
       >
         {contactJob && (() => {

@@ -2,7 +2,7 @@
 
 import { IconX } from "./icons";
 
-export default function Modal({ open, onClose, title, description, children, footer, maxWidth = 480, fullscreen = false, contentMaxWidth = 720 }) {
+export default function Modal({ open, onClose, title, description, children, footer, maxWidth = 480, fullscreen = false, contentMaxWidth = 720, bodyOverflow = "auto" }) {
   if (!open) return null;
   return (
     <div
@@ -31,7 +31,7 @@ export default function Modal({ open, onClose, title, description, children, foo
             <IconX size={15} />
           </button>
         </div>
-        <div className="ds-card-content" style={{ overflowY: "auto", flex: 1 }}>
+        <div className="ds-card-content" style={{ overflowY: bodyOverflow, flex: 1 }}>
           {fullscreen ? <div style={{ maxWidth: contentMaxWidth, margin: "0 auto" }}>{children}</div> : children}
         </div>
         {footer && <div className="ds-card-footer" style={{ justifyContent: "flex-end" }}>{footer}</div>}

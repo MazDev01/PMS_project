@@ -5,10 +5,11 @@ import Link from "next/link";
 import DataTable from "@/app/components/DataTable";
 import StatCard from "@/app/components/StatCard";
 import JobFormModal from "@/app/components/JobFormModal";
+import Modal from "@/app/components/Modal";
 import ViewOnlyBanner from "@/app/components/ViewOnlyBanner";
 import {
   IconPlus, IconEdit, IconTrash, IconBriefcase, IconEye, IconDownload,
-  IconClock, IconAlertTriangle,
+  IconClock, IconCheckCircle, IconAlertTriangle,
 } from "@/app/components/icons";
 import { useTableRows, TableToolbar } from "@/app/components/TableControls";
 import {
@@ -23,6 +24,7 @@ import { exportToCSV } from "@/app/lib/csv";
 const STATUS_FILTERS = [
   { key: "all", label: "ทั้งหมด" },
   { key: "in_progress", label: "กำลังดำเนินการ" },
+  { key: "done", label: "เสร็จสิ้นแล้ว" },
   { key: "repair", label: "แจ้งซ่อม" },
 ];
 
@@ -38,17 +40,15 @@ export default function CoordinatorJobsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // A coordinator only sees jobs they own; an admin/executive sees every job.
   const visibleJobs = scopeJobsToSession(jobList, session);
-  // Completed jobs move to the admin's view — the coordinator's Job Management
-  // only tracks work that is still open (กำลังดำเนินการ / แจ้งซ่อม).
-  const activeJobs = visibleJobs.filter((j) => j.status !== "done");
-  const countInProgress = activeJobs.filter((j) => j.status === "in_progress").length;
-  const countRepair = activeJobs.filter((j) => j.status === "repair").length;
-  const countOverdue = activeJobs.filter((j) => j.status === "in_progress" && j.scheduledDate < TODAY_ISO).length;
-  const outstandingValue = activeJobs.reduce((s, j) => s + (j.amount || 0), 0);
-  const statusFiltered = statusFilter === "all" ? activeJobs : activeJobs.filter((j) => j.status === statusFilter);
+  const countInProgress = visibleJobs.filter((j) => j.status === "in_progress").length;
+  const countDone = visibleJobs.filter((j) => j.status === "done").length;
+  const countRepair = visibleJobs.filter((j) => j.status === "repair").length;
+  const outstandingValue = visibleJobs.filter((j) => j.paymentStatus !== "ชำระแล้ว").reduce((s, j) => s + (j.amount || 0), 0);
+  const statusFiltered = statusFilter === "all" ? visibleJobs : visibleJobs.filter((j) => j.status === statusFilter);
   const { search, setSearch, sortBy, setSortBy, rows: filteredJobs, resultCount, isFiltered } = useTableRows(statusFiltered, {
     searchFields: (j) => [j.id, j.customer, j.jobType, ...(j.teams || [j.team])],
     sortOptions: [
@@ -91,7 +91,7 @@ export default function CoordinatorJobsPage() {
       <div className="page-header">
         <div>
           <h2>จัดการงาน</h2>
-          <p>เพิ่ม แก้ไข และติดตามงานที่กำลังดำเนินการ · งานที่ปิดแล้วดูได้ที่ฝั่งผู้บริหาร/แอดมิน</p>
+          <p>เพิ่ม แก้ไข และติดตามสถานะงานทั้งหมดในระบบ</p>
         </div>
         <div className="page-actions">
           <button type="button" className="btn btn-md btn-outline" onClick={handleExport}>
@@ -111,8 +111,8 @@ export default function CoordinatorJobsPage() {
 
       <div className="kpi-grid" style={{ marginBottom: "1rem" }}>
         <StatCard
-          label="งานที่เปิดอยู่"
-          value={activeJobs.length}
+          label="งานทั้งหมด"
+          value={visibleJobs.length}
           icon={<IconBriefcase size={19} />}
           subLabel={`ค้างรับเงินรวม ${formatTHB(outstandingValue)}`}
         />
@@ -120,15 +120,15 @@ export default function CoordinatorJobsPage() {
           label="กำลังดำเนินการ"
           value={countInProgress}
           icon={<IconClock size={19} />}
-          deltaText={activeJobs.length ? `${Math.round((countInProgress / activeJobs.length) * 100)}% ของงานที่เปิดอยู่` : "—"}
+          deltaText={visibleJobs.length ? `${Math.round((countInProgress / visibleJobs.length) * 100)}% ของทั้งหมด` : "—"}
           deltaTone="warning"
         />
         <StatCard
-          label="งานเกินกำหนด"
-          value={countOverdue}
-          icon={<IconClock size={19} />}
-          deltaText={countOverdue > 0 ? "ควรติดตามด่วน" : "ไม่มีงานเลยกำหนด"}
-          deltaTone={countOverdue > 0 ? "destructive" : "success"}
+          label="เสร็จสิ้นแล้ว"
+          value={countDone}
+          icon={<IconCheckCircle size={19} />}
+          deltaText={visibleJobs.length ? `${Math.round((countDone / visibleJobs.length) * 100)}% ปิดจบ` : "—"}
+          deltaTone="success"
         />
         <StatCard
           label="แจ้งซ่อม"
@@ -141,7 +141,7 @@ export default function CoordinatorJobsPage() {
 
       <div className="ds-tab-list" style={{ marginBottom: "0.75rem" }}>
         {STATUS_FILTERS.map((f) => {
-          const count = f.key === "all" ? activeJobs.length : activeJobs.filter((j) => j.status === f.key).length;
+          const count = f.key === "all" ? visibleJobs.length : visibleJobs.filter((j) => j.status === f.key).length;
           return (
             <button
               key={f.key}
@@ -236,7 +236,7 @@ export default function CoordinatorJobsPage() {
                   >
                     <IconEdit size={15} />
                   </button>
-                  <button type="button" className="btn btn-icon btn-ghost" title={viewOnly ? "ดูอย่างเดียว — ลบไม่ได้" : "ลบงาน"} disabled={viewOnly} onClick={() => handleDelete(r.id)}>
+                  <button type="button" className="btn btn-icon btn-ghost" title={viewOnly ? "ดูอย่างเดียว — ลบไม่ได้" : "ลบงาน"} disabled={viewOnly} onClick={() => setDeleteTarget(r)}>
                     <IconTrash size={15} />
                   </button>
                 </div>
@@ -252,6 +252,35 @@ export default function CoordinatorJobsPage() {
         editingJob={editingJob}
         onClose={() => { setModalOpen(false); setEditingJob(null); }}
       />
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="ยืนยันการลบงาน"
+        description="การลบนี้ไม่สามารถย้อนกลับได้"
+        maxWidth={400}
+        footer={
+          <>
+            <button type="button" className="btn btn-md btn-secondary" onClick={() => setDeleteTarget(null)}>ยกเลิก</button>
+            <button
+              type="button"
+              className="btn btn-md btn-destructive"
+              onClick={() => { handleDelete(deleteTarget.id); setDeleteTarget(null); }}
+            >
+              <IconTrash size={14} /> ลบงาน
+            </button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <div className="text-sm">
+            ต้องการลบงาน <strong>{deleteTarget.id}</strong> ของลูกค้า <strong>{deleteTarget.customer}</strong> ({deleteTarget.jobType}) ใช่หรือไม่?
+            <div className="text-xs text-muted" style={{ marginTop: "0.5rem" }}>
+              ข้อมูลงานนี้จะถูกลบออกจากระบบทันที
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

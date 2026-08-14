@@ -25,7 +25,7 @@ import * as seed from "./mockData";
 // staff user were added, and again when jobs/teams gained the
 // coordinatorId/quotationRevisions/customerFollowUps/customerRating/onLeave
 // fields the two Executive performance-analytics pages depend on).
-const STORAGE_KEY = "macca-pms-db-v20";
+const STORAGE_KEY = "macca-pms-db-v21";
 
 function loadInitial() {
   return {

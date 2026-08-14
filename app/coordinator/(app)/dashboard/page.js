@@ -229,25 +229,25 @@ export default function CoordinatorDashboardPage() {
       {/* Headline KPIs — all scoped to the coordinator's own jobs */}
       <div className="kpi-grid">
         <StatCard
-          label="งานทั้งหมดของฉัน" value={total}
+          animate label="งานทั้งหมดของฉัน" value={total}
           icon={<IconBriefcase size={19} />}
           deltaText="+3 งานใหม่สัปดาห์นี้" deltaTone="success" deltaTrend="up"
           trend={sparkTotal} trendColor="#2563eb" trendId="k-total"
         />
         <StatCard
-          label="กำลังดำเนินการ" value={inProgress}
+          animate label="กำลังดำเนินการ" value={inProgress}
           icon={<IconClock size={19} />}
           deltaText="ติดตามใกล้ชิด" deltaTone="warning"
           trend={sparkWip} trendColor="#d97706" trendId="k-wip"
         />
         <StatCard
-          label="เสร็จสิ้นแล้ว" value={done}
+          animate label="เสร็จสิ้นแล้ว" value={done}
           icon={<IconCheckCircle size={19} />}
           deltaText="ปิดงานเรียบร้อย" deltaTone="success"
           trend={sparkDone} trendColor="#16a34a" trendId="k-done"
         />
         <StatCard
-          label="งานเกินกำหนด" value={overdueJobs}
+          animate label="งานเกินกำหนด" value={overdueJobs}
           subLabel={`${overduePct}% ของงานที่กำลังทำ`}
           icon={<IconAlertTriangle size={19} />}
           deltaText={overdueJobs > 0 ? "ควรติดตามด่วน" : "ไม่มีงานค้าง"}
@@ -255,7 +255,7 @@ export default function CoordinatorDashboardPage() {
           trend={sparkOverdue} trendColor="#dc2626" trendId="k-overdue"
         />
         <StatCard
-          label="เงินค้างรับ" value={formatTHB(outstandingValue)}
+          animate label="เงินค้างรับ" value={formatTHB(outstandingValue)}
           subLabel={`${outstandingList.length} งานยังไม่เก็บเงิน`}
           icon={<IconDollar size={19} />}
           deltaText="รอเก็บ" deltaTone="warning"
