@@ -1,4 +1,4 @@
-<!-- standard: v1.0 (ทาง A — JavaScript) — https://github.com/MazDev01/dev-standard -->
+<!-- standard: v1.6 (ทาง A — JavaScript) — https://github.com/MazDev01/dev-standard -->
 
 # วิธีทำงานกับโปรเจกต์นี้
 
@@ -8,10 +8,11 @@
 
 | คำสั่ง | ใช้เมื่อไหร่ |
 |---|---|
-| `./gate.sh` | ชั้นเร็ว — lint ratchet (~22–39 วิ เมื่อ cache อุ่น) |
+| `./gate.sh` | ชั้นเร็ว — lint ratchet (~12–17 วิ เมื่อ cache อุ่น) |
 | `./gate.sh --full` | ก่อน push — lint + build + render smoke (pre-push เรียกให้เอง) |
 | `node scripts/scope.mjs <ชื่อ>` | **ก่อนแก้อะไรก็ตาม** — ดูว่ากระทบที่ไหนบ้าง (~14 วิ ไม่ใช่ gate) |
-| `node scripts/ratchet.mjs --update` | หลังแก้ปัญหา lint เก่าได้แล้ว |
+| `node scripts/ratchet.mjs --update` | หลังแก้ปัญหา lint เก่าได้แล้ว (ต้อง commit ให้หมดก่อน) |
+| `bash standard/mode.sh status` | ตอนวัดผล — เช็คว่าอยู่โหมดไหน (ดู standard/baseline.md) |
 
 ตั้ง hook ครั้งเดียวต่อเครื่อง: `git config core.hooksPath .githooks`
 
