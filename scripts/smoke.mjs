@@ -53,9 +53,16 @@ const CHANNEL_ENV = process.env.SMOKE_BROWSER_CHANNEL ?? "msedge";
 const CHANNEL = CHANNEL_ENV === "" || CHANNEL_ENV === "default" ? null : CHANNEL_ENV;
 const PORT = Number(process.env.SMOKE_PORT || 3100);
 
-/** console error ที่ไม่เกี่ยวกับความถูกต้องของหน้า */
+/**
+ * console error ที่ไม่เกี่ยวกับความถูกต้องของหน้า
+ *
+ * "Failed to load resource" ถูกกรองออกเพราะเราดักที่ page.on("response") แทน
+ * ซึ่งรู้ URL จริงจึงแยกได้ว่าเป็นของเราหรือของ CDN ภายนอก
+ * ข้อความ console ไม่มี URL อยู่ในนั้นเลย กรองแบบละเอียดไม่ได้
+ * (ตัวกรอง /favicon/ ที่เคยเขียนไว้จึงไม่เคยทำงานมาตั้งแต่แรก)
+ */
 const IGNORED_CONSOLE = [
-  /favicon/i,
+  /Failed to load resource/i,
   /Download the React DevTools/i,
   /\[Fast Refresh\]/i,
 ];
@@ -140,14 +147,24 @@ async function checkRoute(browser, base, route) {
   const problems = [];
 
   /**
-   * เก็บ URL ของ resource ที่โหลดไม่สำเร็จ
-   * ข้อความ console ของเบราว์เซอร์เขียนแค่ "Failed to load resource: ... 404 ()"
-   * ไม่บอกว่าไฟล์ไหน ทำให้วินิจฉัยไม่ได้เลย ต้องดักที่ response แทน
+   * เก็บ resource ที่โหลดไม่สำเร็จ แยกเป็นของเราเองกับของภายนอก
+   *
+   * ⚠ ของภายนอกต้องไม่ทำให้ gate แดง
+   *   เจอจริงบน CI: ฟอนต์จาก fonts.gstatic.com คืน 404 เป็นครั้งคราว
+   *   route ที่พังเปลี่ยนไปเรื่อย ๆ ทุกรอบ = เป็นเรื่องเน็ตเวิร์กของ CDN ไม่ใช่โค้ดเรา
+   *   ถ้าปล่อยให้แดง ทีมจะเจอ gate แดงแบบสุ่มแล้วเลิกเชื่อ gate ทั้งระบบ
+   *
+   *   แต่ก็ไม่ซ่อน — รายงานเป็นคำเตือนไว้ให้เห็น
    */
-  const badResponses = [];
+  const badInternal = [];
+  const badExternal = [];
   page.on("response", (res) => {
-    if (res.status() >= 400) {
-      badResponses.push(`${res.status()} ${res.url().replace(base, "")}`);
+    if (res.status() < 400) return;
+    const url = res.url();
+    if (url.startsWith(base)) {
+      badInternal.push(`${res.status()} ${url.slice(base.length)}`);
+    } else {
+      badExternal.push(`${res.status()} ${new URL(url).host}`);
     }
   });
 
@@ -178,12 +195,12 @@ async function checkRoute(browser, base, route) {
     await context.close();
   }
 
-  // ต่อท้ายรายชื่อ resource ที่พัง เพื่อให้รู้ว่า 404 คือไฟล์ไหน
-  if (problems.length && badResponses.length) {
-    problems.push(`resource ที่พัง: ${[...new Set(badResponses)].join(" · ")}`);
+  // resource ของเราเองที่พัง = ปัญหาจริง ทำให้ route นี้ไม่ผ่าน
+  if (badInternal.length) {
+    problems.push(`resource ของเราพัง: ${[...new Set(badInternal)].join(" · ")}`);
   }
 
-  return problems;
+  return { problems, external: [...new Set(badExternal)] };
 }
 
 /**
@@ -230,8 +247,10 @@ async function main() {
   }
 
   const failures = [];
+  const externalIssues = new Set();
   for (const route of ROUTES) {
-    const problems = await checkRoute(browser, base, route);
+    const { problems, external } = await checkRoute(browser, base, route);
+    for (const e of external) externalIssues.add(e);
     if (problems.length === 0) {
       console.log(`  ✓ ${route}`);
     } else {
@@ -239,6 +258,13 @@ async function main() {
       for (const p of problems) console.log(`      ${p}`);
       failures.push(route);
     }
+  }
+
+  // ของภายนอกไม่ทำให้แดง แต่ต้องเห็น — ไม่งั้นปัญหาจริงจะถูกซ่อน
+  if (externalIssues.size) {
+    console.log(`\n  ⓘ resource ภายนอกที่โหลดไม่สำเร็จ (ไม่นับเป็นความผิดของแอป):`);
+    for (const e of externalIssues) console.log(`      ${e}`);
+    console.log(`      พึ่ง CDN ภายนอกทำให้หน้าช้าและพังตามคนอื่น — พิจารณา self-host`);
   }
 
   await browser.close();
