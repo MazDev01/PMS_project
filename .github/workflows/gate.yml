@@ -25,11 +25,15 @@ jobs:
 
       - run: npm ci
 
-      # smoke ใช้ playwright-core ซึ่งไม่โหลดเบราว์เซอร์มาเอง
-      # เครื่อง dev ใช้ Edge ที่มีอยู่แล้ว · CI ต้องลง chromium
-      - run: npx playwright install --with-deps chromium
+      # ลงเบราว์เซอร์ให้ตรงเวอร์ชันกับ playwright-core ที่อยู่ใน node_modules
+      # (ใช้ playwright ตัวเต็มจาก npx จะได้เบราว์เซอร์คนละ revision กับที่ core คาดไว้)
+      - name: ลง chromium
+        run: npx playwright-core install --with-deps chromium
 
+      # เรียกผ่าน bash ตรง ๆ ไม่พึ่ง execute bit
+      # เครื่อง dev เป็น Windows ที่ core.fileMode=false → chmod ถูกเมิน
+      # ไฟล์อาจถูก commit เป็น 100644 แล้ว ./gate.sh จะ Permission denied บน Linux
       - name: gate --full
         env:
-          SMOKE_BROWSER_CHANNEL: chromium
-        run: ./gate.sh --full
+          SMOKE_BROWSER_CHANNEL: "" # ว่าง = ใช้ chromium ที่ playwright ลงให้ ไม่ใช่ Edge
+        run: bash ./gate.sh --full

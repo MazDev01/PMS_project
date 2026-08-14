@@ -44,7 +44,13 @@ const ROUTES = loadRoutes();
 
 /** ต่ำกว่านี้ถือว่าหน้าว่าง */
 const MIN_BODY_TEXT = 40;
-const CHANNEL = process.env.SMOKE_BROWSER_CHANNEL || "msedge";
+
+/**
+ * เครื่อง dev ยืม Edge ที่ Windows มีอยู่แล้ว จะได้ไม่ต้องโหลด Chromium 150MB
+ * CI ตั้งเป็นค่าว่าง = ใช้ chromium ที่ playwright ลงให้ (Ubuntu ไม่มี Edge)
+ */
+const CHANNEL_ENV = process.env.SMOKE_BROWSER_CHANNEL ?? "msedge";
+const CHANNEL = CHANNEL_ENV === "" || CHANNEL_ENV === "default" ? null : CHANNEL_ENV;
 const PORT = Number(process.env.SMOKE_PORT || 3100);
 
 /** console error ที่ไม่เกี่ยวกับความถูกต้องของหน้า */
@@ -194,10 +200,13 @@ async function main() {
 
   let browser;
   try {
-    browser = await chromium.launch({ channel: CHANNEL, headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      ...(CHANNEL ? { channel: CHANNEL } : {}),
+    });
   } catch (err) {
     server?.stop();
-    console.error(`\n✗ เปิดเบราว์เซอร์ไม่ได้ (channel=${CHANNEL})`);
+    console.error(`\n✗ เปิดเบราว์เซอร์ไม่ได้ (channel=${CHANNEL ?? "ค่าเริ่มต้นของ playwright"})`);
     console.error(`  ${String(err).split("\n")[0]}`);
     console.error(`  แก้: ตั้ง SMOKE_BROWSER_CHANNEL หรือ npx playwright install chromium`);
     process.exit(1);
