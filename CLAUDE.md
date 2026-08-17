@@ -1,4 +1,4 @@
-<!-- standard: v1.7 (ทาง A — JavaScript) — https://github.com/MazDev01/dev-standard -->
+<!-- standard: v1.8 (ทาง A — JavaScript) — https://github.com/MazDev01/dev-standard -->
 
 # วิธีทำงานกับโปรเจกต์นี้
 
