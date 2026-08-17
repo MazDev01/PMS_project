@@ -1,0 +1,18 @@
+{
+  "_": "ลายเซ็นของไฟล์เครื่องยนต์ตอนติดตั้ง — อย่าแก้มือ ใช้ node scripts/drift.mjs --update",
+  "version": "v1.9",
+  "engine": {
+    "scripts/scope.mjs": "eb2b28f0af4af498",
+    "scripts/ratchet.mjs": "6da6440b8e135bb6",
+    "scripts/smoke.mjs": "62f2d7c84c3693f5",
+    "scripts/drift.mjs": "8ff123823cec3478",
+    "standard/mode.sh": "feb5bb85f041bdfd",
+    "standard/measure.mjs": "e25b9e3372e70b3d"
+  },
+  "custom": [
+    "CLAUDE.md",
+    "gate.sh",
+    "standard/config.json",
+    "standard/baseline.md"
+  ]
+}

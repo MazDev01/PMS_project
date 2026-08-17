@@ -30,6 +30,11 @@ fail() { echo ""; echo "✗ gate ไม่ผ่าน: $1"; exit 1; }
 
 start=$(date +%s)
 
+if [[ -f scripts/drift.mjs ]]; then
+  echo "→ drift"
+  node scripts/drift.mjs || fail "ไฟล์เครื่องยนต์ของมาตรฐานถูกแก้ในโปรเจกต์นี้"
+fi
+
 echo "→ lint ratchet"
 node scripts/ratchet.mjs || fail "lint แย่ลงกว่าเลขฐาน"
 
