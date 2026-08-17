@@ -69,6 +69,9 @@ warn_if_dirty() {
   echo ""
   echo "     ล้างให้สะอาดก่อน:  bash standard/mode.sh reset"
   echo ""
+  echo "     ถ้าเพิ่งล้างไปแล้วยังขึ้นอยู่ = แท็บไฟล์เปิดค้างในเอดิเตอร์"
+  echo "     auto-save เขียนทับของที่ git คืนมา — ปิดแท็บก่อนแล้วล้างใหม่"
+  echo ""
 }
 
 case "${1:-status}" in
